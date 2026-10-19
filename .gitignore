@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Logs & temp
+*.log
+.temp_*
+.cache/
+
+# OS artifacts
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Scratch & IDE
+.vscode/
+.idea/
+
+# Agent & AI instruction files (Excluded from repo)
+.agents/
+.agent/
+.agent*
+AGENTS.md
+agent.md
+agents.md
+*.agent
+

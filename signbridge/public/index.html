@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SignBridge · Two-way assistive communication web application for the IoT ESP32 Sign Language Glove.">
+  <title>SignBridge · IoT Sign Language Communication System</title>
+  <link rel="stylesheet" href="css/index.css">
+</head>
+<body>
+
+  <!-- Top Global Header -->
+  <header class="app-header" role="banner">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-logo-badge" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V4a1.5 1.5 0 013 0v4m0-4a1.5 1.5 0 013 0v6m0-3a1.5 1.5 0 013 0v7" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>SignBridge</h1>
+          <span>IoT Assistive Communication</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Role Indicator & Switcher -->
+        <button id="btn-switch-role" class="btn-secondary" title="Switch active interface role" aria-label="Switch User Role">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <span id="header-role-label">Role: Partner</span>
+        </button>
+
+        <!-- ESP32 Serial Status Badge -->
+        <div id="badge-serial-status" class="badge-status badge-disconnected" role="status" aria-live="polite">
+          <span class="status-dot"></span>
+          <span id="label-serial-status">ESP32: Disconnected</span>
+        </div>
+
+        <!-- Sync Channel Badge -->
+        <div id="badge-sync-status" class="badge-status badge-disconnected" title="Synchronization state with other devices / tabs" role="status">
+          <span class="status-dot"></span>
+          <span id="label-sync-status">Sync: Local</span>
+        </div>
+
+        <!-- Audio Mute Toggle Button -->
+        <button id="btn-mute-toggle" class="btn-icon" title="Toggle English voice speech" aria-label="Toggle Speech Audio">
+          <svg id="icon-audio-on" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+          </svg>
+          <svg id="icon-audio-off" class="icon" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+          </svg>
+        </button>
+
+        <!-- Dark/Light Theme Toggle -->
+        <button id="btn-theme-toggle" class="btn-icon" title="Toggle dark/light theme" aria-label="Toggle Theme">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Audio Unlock Notification (Appears if browser autoplay blocks initial speech) -->
+  <div id="audio-unlock-banner" class="audio-banner" style="display:none; max-width: 1400px; margin: 16px auto 0;" role="alert">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/></svg>
+      <span>Click anywhere or press Enable Audio to allow the browser to speak translated signs aloud automatically.</span>
+    </div>
+    <button id="btn-unlock-audio" class="btn-primary" style="padding: 4px 12px; min-height: 36px;">Enable Audio</button>
+  </div>
+
+  <main id="app-content" role="main">
+
+    <!-- ====================================================================
+         SCREEN 1: LOGIN / ROLE SELECTION
+         ==================================================================== -->
+    <section id="screen-login" class="login-container" style="display:none;">
+      <div class="login-header-text">
+        <h2>Choose Your Experience</h2>
+        <p>SignBridge provides a tailored interface for both the sign glove wearer and the communication partner.</p>
+      </div>
+
+      <div class="demo-banner">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4m0-4h.01"/></svg>
+        <div>
+          <strong>Local Prototype Mode:</strong> These demo profiles allow seamless local testing and multi-tab demonstration. Settings and history are preserved locally in your browser.
+        </div>
+      </div>
+
+      <div class="role-cards-grid">
+        <!-- Role B: Communication Partner -->
+        <article class="role-card role-receiver-card" id="card-role-receiver">
+          <span class="role-card-badge role-receiver">Role B · Communication Partner</span>
+          <div class="role-card-icon">
+            <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+          <h3>Communication Partner</h3>
+          <p>The person listening to and conversing with the glove wearer.</p>
+          <ul class="role-features-list">
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Connects to ESP32 via Web Serial USB</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Translates gestures into large English text instantly</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Speaks recognized phrases aloud using natural speech</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Offers 1-click contextual replies sent to the glove</span>
+            </li>
+          </ul>
+          <button id="btn-login-receiver" class="btn-primary" style="width: 100%;">
+            Enter as Communication Partner
+          </button>
+        </article>
+
+        <!-- Role A: Glove User -->
+        <article class="role-card role-glove-card" id="card-role-glove">
+          <span class="role-card-badge role-glove">Role A · Glove Wearer</span>
+          <div class="role-card-icon">
+            <svg class="icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V4a1.5 1.5 0 013 0v4m0-4a1.5 1.5 0 013 0v6m0-3a1.5 1.5 0 013 0v7" />
+            </svg>
+          </div>
+          <h3>Glove User</h3>
+          <p>The person performing sign language with the sensor glove.</p>
+          <ul class="role-features-list">
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>High-visibility large incoming text display</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Simulated 16x2 LCD dot-matrix screen preview</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Vibration motor haptic pattern indicator</span>
+            </li>
+            <li>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M5 13l4 4L19 7"/></svg>
+              <span>Clear delivery acknowledgment status</span>
+            </li>
+          </ul>
+          <button id="btn-login-glove" class="btn-accent" style="width: 100%;">
+            Enter as Glove User
+          </button>
+        </article>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 2: COMMUNICATION PARTNER DASHBOARD (ROLE B)
+         ==================================================================== -->
+    <section id="screen-receiver" class="main-layout" style="display:none;">
+      <!-- Left Column: Primary Translation Hero + Reply Controls -->
+      <div style="display: flex; flex-direction: column; gap: var(--space-6);">
+
+        <!-- PRIMARY TRANSLATION FOCAL POINT -->
+        <article class="translation-hero-card" aria-labelledby="heading-latest-translation">
+          <div class="hero-meta-row">
+            <span class="hero-label">
+              <span class="status-dot" style="background-color: var(--color-accent);"></span>
+              Live Sign Language Recognition
+            </span>
+            <span id="rec-timestamp" style="font-size: 0.8125rem; color: var(--color-text-subtle);">Waiting for gesture...</span>
+          </div>
+
+          <div id="rec-display-box" class="translation-display-text" role="status" aria-live="assertive" aria-atomic="true">
+            <span id="rec-phrase" style="color: var(--color-text-subtle); font-size: 2.25rem;">Awaiting sign...</span>
+          </div>
+
+          <div class="translation-sub-row">
+            <span>Raw Event:</span>
+            <code id="rec-raw-event" class="sign-chip">NONE</code>
+            <span id="rec-sketch-tag" class="sign-chip" style="background-color: var(--color-primary-light);">Sketch A / B</span>
+            <span id="rec-gesture-desc" style="font-style: italic;"></span>
+          </div>
+
+          <div class="hero-actions-row">
+            <button id="btn-replay-audio" class="btn-primary" aria-label="Replay pronunciation aloud">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+              <span>Replay Audio</span>
+            </button>
+            <button id="btn-open-scenarios" class="btn-secondary" aria-label="Browse communication phrase library">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+              <span>Phrase Library</span>
+            </button>
+          </div>
+        </article>
+
+        <!-- CONTEXTUAL REPLIES SECTION -->
+        <article class="contextual-replies-box" aria-labelledby="heading-replies">
+          <div class="section-title-row">
+            <div>
+              <h3 id="heading-replies">Quick Contextual Replies</h3>
+              <p style="font-size: 0.875rem;">1-click responses sent to the glove user’s interface and LCD screen.</p>
+            </div>
+            <span id="reply-context-badge" class="sign-chip">Default Responses</span>
+          </div>
+
+          <div id="quick-replies-container" class="quick-replies-grid">
+            <!-- Dynamically populated contextual buttons -->
+          </div>
+
+          <form id="form-custom-reply" class="custom-reply-form" aria-label="Send custom text reply">
+            <input type="text" id="input-custom-reply" class="custom-reply-input" placeholder="Type a custom reply to the glove user..." maxlength="80">
+            <button type="submit" class="btn-primary">
+              <span>Send</span>
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </form>
+        </article>
+
+        <!-- EXPANDABLE HARDWARE & SENSOR DIAGNOSTICS -->
+        <div class="diagnostics-panel">
+          <div id="diagnostics-toggle" class="diagnostics-header" role="button" tabindex="0" aria-expanded="false" aria-controls="diagnostics-content">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+              <strong>ESP32 Hardware Connection & Sensor Diagnostics</strong>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="detected-sketch-badge" class="sign-chip" style="font-size: 0.75rem;">Sketch: Not detected</span>
+              <svg id="diagnostics-arrow" class="icon-sm chevron-rotate" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <div id="diagnostics-content" class="diagnostics-body" style="display: none;">
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between;">
+              <div style="display: flex; gap: var(--space-2);">
+                <button id="btn-serial-connect" class="btn-primary">
+                  <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <span>Connect ESP32 (USB)</span>
+                </button>
+                <button id="btn-serial-disconnect" class="btn-danger" style="display: none;">
+                  Disconnect
+                </button>
+              </div>
+
+              <div style="display: flex; gap: var(--space-2); align-items: center;">
+                <button id="btn-toggle-live-readings" class="btn-secondary" title="Send 'p' to toggle live readings stream on Sketch A">
+                  <span>Toggle Live Stream ('p')</span>
+                </button>
+                <span id="live-reading-status-label" style="font-size: 0.8125rem; color: var(--color-text-subtle);">Stream: OFF</span>
+              </div>
+            </div>
+
+            <!-- In-place updated sensor readings -->
+            <div class="sensor-grid">
+              <div class="sensor-box">
+                <div class="sensor-box-label">Thumb (33)</div>
+                <div id="sensor-flex-0" class="sensor-box-val">—</div>
+                <small id="sensor-delta-0" style="color: var(--color-text-subtle);">Δ: —</small>
+              </div>
+              <div class="sensor-box">
+                <div class="sensor-box-label">Index (35)</div>
+                <div id="sensor-flex-1" class="sensor-box-val">—</div>
+                <small id="sensor-delta-1" style="color: var(--color-text-subtle);">Δ: —</small>
+              </div>
+              <div class="sensor-box">
+                <div class="sensor-box-label">Middle (25)</div>
+                <div id="sensor-flex-2" class="sensor-box-val">—</div>
+                <small id="sensor-delta-2" style="color: var(--color-text-subtle);">Δ: —</small>
+              </div>
+              <div class="sensor-box">
+                <div class="sensor-box-label">Ring (34)</div>
+                <div id="sensor-flex-3" class="sensor-box-val">—</div>
+                <small id="sensor-delta-3" style="color: var(--color-text-subtle);">Δ: —</small>
+              </div>
+              <div class="sensor-box">
+                <div class="sensor-box-label">Pinky (32)</div>
+                <div id="sensor-flex-4" class="sensor-box-val">—</div>
+                <small id="sensor-delta-4" style="color: var(--color-text-subtle);">Δ: —</small>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: var(--space-4); font-size: 0.875rem;">
+              <div><strong>Bent Pattern:</strong> <span id="diag-bent-pattern" class="sign-chip">—————</span></div>
+              <div><strong>MPU6500:</strong> <span id="diag-mpu-status" class="sign-chip">Unknown</span></div>
+              <div><strong>LCD Display:</strong> <span id="diag-lcd-status" class="sign-chip">Unknown</span></div>
+              <div><strong>Accel (X,Y,Z):</strong> <span id="diag-accel" class="sign-chip">—</span></div>
+              <div><strong>Gyro (X,Y,Z):</strong> <span id="diag-gyro" class="sign-chip">—</span></div>
+            </div>
+
+            <div>
+              <div style="font-size: 0.75rem; font-weight: 700; color: var(--color-text-subtle); margin-bottom: 4px;">RAW SERIAL STREAM MONITOR (DIAGNOSTICS ONLY)</div>
+              <div id="serial-raw-console" class="raw-log-console">Awaiting serial connection...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Conversation Thread & Message Status -->
+      <aside class="conversation-panel" aria-labelledby="heading-conversation">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-3);">
+          <h3 id="heading-conversation">Conversation Log</h3>
+          <button id="btn-clear-chat" class="btn-secondary" style="padding: 4px 8px; min-height: 32px; font-size: 0.75rem;" title="Clear conversation log">
+            Clear
+          </button>
+        </div>
+
+        <div id="chat-history-receiver" class="conversation-scroll" role="log" aria-live="polite">
+          <!-- Chat messages inserted here -->
+        </div>
+      </aside>
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 3: GLOVE USER DASHBOARD (ROLE A)
+         ==================================================================== -->
+    <section id="screen-glove" class="glove-user-layout" style="display:none;">
+
+      <!-- BIG HERO INCOMING MESSAGE (FOCAL POINT FOR GLOVE USER) -->
+      <article class="incoming-hero-box" aria-labelledby="heading-incoming">
+        <span class="incoming-eyebrow">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Incoming Message from Partner
+        </span>
+
+        <div id="glove-giant-msg" class="incoming-text-giant" role="status" aria-live="assertive">
+          No messages yet
+        </div>
+
+        <div style="display: flex; gap: var(--space-4); align-items: center; color: var(--color-text-subtle); font-size: 0.9375rem;">
+          <span id="glove-msg-sender">Sender: Partner</span>
+          <span>•</span>
+          <span id="glove-msg-timestamp">Just now</span>
+          <span>•</span>
+          <span id="glove-msg-delivery-badge" class="badge-status badge-connected">Delivered to Screen</span>
+        </div>
+      </article>
+
+      <!-- 16x2 LCD SIMULATION AND VIBRATION MOTOR INDICATOR -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-6);">
+
+        <!-- LCD Screen Simulation -->
+        <article class="lcd-container-wrapper" aria-labelledby="heading-lcd-preview">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span id="heading-lcd-preview" style="font-size: 0.75rem; color: #a1b896; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">
+              16x2 LCD Backpack Output (I2C Bus 1)
+            </span>
+            <span id="lcd-status-dot" class="sign-chip" style="background: rgba(0,0,0,0.5); color: #8cb966; font-size: 0.75rem;">PCF8574: READY</span>
+          </div>
+
+          <div class="lcd-screen" aria-label="Simulated LCD screen">
+            <div id="lcd-line-1" class="lcd-line">SIGNBRIDGE READY</div>
+            <div id="lcd-line-2" class="lcd-line">WAITING...     </div>
+          </div>
+          <div id="lcd-truncation-note" style="display:none; color: #cbd5e1; font-size: 0.75rem; margin-top: 6px;">
+            * Message truncated to fit 16 characters. Full text shown on screen above.
+          </div>
+        </article>
+
+        <!-- Vibration Motor Haptic Visualizer -->
+        <article class="vibe-visualizer" aria-labelledby="heading-vibe">
+          <div id="vibe-indicator-ring" class="vibe-ring" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div id="heading-vibe" style="font-size: 0.8125rem; font-weight: 700; text-transform: uppercase; color: var(--color-text-subtle);">
+              Glove Vibration Motor (Haptic Feedback)
+            </div>
+            <div id="vibe-label" style="font-size: 1.125rem; font-weight: 700; color: var(--color-text); margin-top: 2px;">
+              Idle (No Vibration)
+            </div>
+            <div id="vibe-meaning" style="font-size: 0.8125rem; color: var(--color-text-muted);">
+              Motor activates upon incoming partner replies.
+            </div>
+          </div>
+        </article>
+
+      </div>
+
+      <!-- Quick Outgoing Phrases for Glove User (Clean accessible tap buttons) -->
+      <article class="contextual-replies-box" aria-labelledby="heading-glove-quick-signs">
+        <div class="section-title-row">
+          <div>
+            <h3 id="heading-glove-quick-signs">Glove Quick Assist Responses</h3>
+            <p style="font-size: 0.875rem;">Tap a standard confirmation or request to send back to your partner.</p>
+          </div>
+        </div>
+        <div class="quick-replies-grid">
+          <button class="reply-btn btn-glove-send" data-text="Okay">
+            <span>Okay / Understood</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <button class="reply-btn btn-glove-send" data-text="Yes">
+            <span>Yes</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="20 6 9 17 4 12"/></svg>
+          </button>
+          <button class="reply-btn btn-glove-send" data-text="No">
+            <span>No</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          <button class="reply-btn btn-glove-send" data-text="Thank you">
+            <span>Thank you</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+          <button class="reply-btn btn-glove-send" data-text="I need water">
+            <span>I need water</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2.69l5.66 5.66a8 8 0 11-11.31 0z"/></svg>
+          </button>
+          <button class="reply-btn btn-glove-send" data-text="Please wait">
+            <span>Please wait</span>
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+        </div>
+      </article>
+
+      <!-- Glove Recent Conversation Log -->
+      <article class="contextual-replies-box" style="margin-bottom: var(--space-8);">
+        <h3 style="margin-bottom: var(--space-4);">Recent Messages</h3>
+        <div id="chat-history-glove" class="conversation-scroll" style="height: 240px;" role="log">
+          <!-- Messages reflected here -->
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ====================================================================
+         SCREEN 4: SCENARIO PHRASE LIBRARY (MODAL / OVERLAY)
+         ==================================================================== -->
+    <div id="modal-scenarios" class="modal-overlay" style="display:none; position: fixed; inset: 0; background: rgba(15,23,42,0.6); z-index: 200; align-items: center; justify-content: center; padding: 20px;">
+      <div class="modal-card" style="background: var(--color-surface); border-radius: var(--radius-xl); max-width: 900px; width: 100%; max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-xl);">
+        <div style="padding: var(--space-5); border-bottom: 1px solid var(--color-border); display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <h2>Communication Scenario Library</h2>
+            <p style="font-size: 0.875rem;">Browse and search situational phrases with contextual answers.</p>
+          </div>
+          <button id="btn-close-scenarios" class="btn-icon" aria-label="Close phrase library">
+            <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div style="padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--color-border);">
+          <input type="text" id="input-search-phrases" class="custom-reply-input" placeholder="Search phrases (e.g. water, coffee, doctor, train)..." style="width: 100%;">
+        </div>
+
+        <div id="scenarios-container-list" style="padding: var(--space-5); overflow-y: auto; flex-grow: 1;">
+          <!-- Dynamically populated scenario cards -->
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ======================================================================
+       DEMO CONTROLS BAR (FOR ZERO-HARDWARE EVALUATION AND PRESENTATIONS)
+       ====================================================================== -->
+  <footer id="demo-bar-root" class="demo-bar" role="complementary" aria-label="Demonstration simulation controls">
+    <div id="demo-bar-toggle" class="demo-bar-toggle-header" role="button" tabindex="0" aria-expanded="true" aria-controls="demo-bar-body">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span class="badge-status badge-warning" style="font-size: 0.75rem; padding: 2px 8px;">DEMO SIMULATION CONTROLS</span>
+        <span style="font-size: 0.75rem; color: var(--color-text-subtle);">Simulate firmware signs without physical USB ESP32</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 700; color: var(--color-primary);">
+        <span id="demo-toggle-label">Minimize</span>
+        <svg id="demo-toggle-icon" class="icon-sm chevron-rotate expanded" viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div id="demo-bar-body" class="demo-bar-inner">
+      <!-- Quick Sign Injection Buttons -->
+      <div class="demo-pills-row">
+        <!-- Sketch A Finger Signs -->
+        <button class="demo-btn btn-sim-sign" data-sign="OKAY" title="Sketch A: Thumb+Index circle (11000)">OKAY</button>
+        <button class="demo-btn btn-sim-sign" data-sign="WATER" title="Sketch A: Thumb+Pinky bent (10001)">WATER</button>
+        <button class="demo-btn btn-sim-sign" data-sign="TWO" title="Sketch A: Peace V sign (10011)">TWO</button>
+        <button class="demo-btn btn-sim-sign" data-sign="THREE" title="Sketch A: 3 fingers up (00011)">THREE</button>
+        <button class="demo-btn btn-sim-sign" data-sign="FOUR" title="Sketch A: 4 fingers, thumb folded (10000)">FOUR</button>
+        <button class="demo-btn btn-sim-sign" data-sign="SEVEN" title="Sketch A: Thumb+Ring touching (10010)">SEVEN</button>
+
+        <span style="color: var(--color-border);">|</span>
+
+        <!-- Sketch B Motion Signs -->
+        <button class="demo-btn btn-sim-sign" data-sign="HELLO" title="Sketch B: Salute outward">HELLO</button>
+        <button class="demo-btn btn-sim-sign" data-sign="BYE" title="Sketch B: Wave hand">BYE</button>
+        <button class="demo-btn btn-sim-sign" data-sign="THANK YOU" title="Sketch B: Chin forward-down">THANK YOU</button>
+        <button class="demo-btn btn-sim-sign" data-sign="PLEASE" title="Sketch B: Chest circle">PLEASE</button>
+        <button class="demo-btn btn-sim-sign" data-sign="HAPPY" title="Sketch B: Chest brush up">HAPPY</button>
+        <button class="demo-btn btn-sim-sign" data-sign="COME HERE" title="Sketch B: Curl palm up">COME HERE</button>
+        <button class="demo-btn btn-sim-sign" data-sign="SLOW DOWN" title="Sketch B: Pat palm down">SLOW DOWN</button>
+        <button class="demo-btn btn-sim-sign" data-sign="FINISHED" title="Sketch B: Flip palm out">FINISHED</button>
+
+        <span style="color: var(--color-border);">|</span>
+
+        <!-- Test cases -->
+        <button id="btn-demo-repeat" class="demo-btn" title="Sends the same sign twice to verify it speaks both times">Repeat Test</button>
+        <button id="btn-demo-noise" class="demo-btn" title="Sends RECOGNIZED: OKAY without >>> <<< delimiters to prove it is ignored">Noise Test</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Application Modules -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

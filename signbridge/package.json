@@ -1,0 +1,14 @@
+{
+  "name": "signbridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Two-way communication web app for the IoT sign-language glove (ESP32, Web Serial).",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/parser.test.js test/protocol.test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
