@@ -70,12 +70,19 @@ the LCD and website show the phrase.
 | Nod | Open hand, dip wrist down and back | Please repeat that. | I need water. | Can I pay by UPI? | Water, please. | Please repeat that. |
 | Shake | Shake hard, any hand shape | Emergency! Please help me. | Emergency! Call a doctor. | Emergency! … | Emergency! … | Emergency! … |
 
-- **Hand shapes** use only the index, ring and pinky sensors; thumb and middle
-  are not used. Hold the shape for about half a second with the hand fairly still.
+- **Hand shapes** need the middle and ring fingers closed; the index and pinky
+  then decide the shape. The thumb is not used. Hold the shape for about half a
+  second with the hand fairly still.
 - **Motions** use the gyroscope and accelerometer and do not depend on how the
-  MPU is mounted: *shake* is hard and repeated, *flip* ends with the hand turned
-  over, *wave* goes back and forth at least twice, *nod* goes out and back once.
-  Start from a still hand and pause about a second between motions.
+  MPU is mounted. Each movement is measured from a still hand until the hand is
+  still again, then classified by traits that do not overlap:
+  - *Shake*: 5+ direction changes at 5+ per second (quick, like shaking water off).
+  - *Flip*: the hand ends turned over (70°+ change in gravity direction), no bounce back.
+  - *Wave*: 2+ direction changes at a relaxed pace.
+  - *Nod*: exactly one out-and-back.
+
+  Small bounces below 35% of the movement's peak speed are not counted, so a nod's
+  rebound does not turn it into a wave. Hold still for a moment between motions.
 - **Calibration** runs at every startup and records the straight-hand flex
   readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
   card, or `c` over serial) after putting the glove on again.

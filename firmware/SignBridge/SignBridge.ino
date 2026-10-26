@@ -136,11 +136,9 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .hand .palm { fill: var(--palm); }
 .hand .finger { fill: var(--hand); transform-box: fill-box; transform-origin: 50% 100%; transition: transform .25s cubic-bezier(.3,.7,.4,1), fill .2s; }
 .hand .finger[data-bent="true"] { fill: var(--accent); }
-.hand .finger[data-ignored="true"] { opacity: .45; }
 .chips { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 0; margin: 8px 0 18px; }
 .chips li { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--fill); color: var(--secondary); transition: background .2s, color .2s; }
 .chips li[data-bent="true"] { background: var(--accent); color: #fff; }
-.chips li[data-ignored="true"] { opacity: .45; text-decoration: line-through; }
 .meter { border-top: 1px solid var(--separator); padding-top: 14px; }
 .meter-head { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
 .value { font-variant-numeric: tabular-nums; font-weight: 500; }
@@ -322,7 +320,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">The middle sensor (GPIO36) is shown but never used for recognition.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
   <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
@@ -336,10 +334,10 @@ const GESTURES = {
   POINT: { name: 'Point', kind: 'shape', how: 'Index finger up, other fingers closed' },
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Pinky up, other fingers closed' },
   ROCK: { name: 'Index + pinky', kind: 'shape', how: 'Index and pinky up, middle and ring closed (thumb either way)' },
-  WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, wave side to side two or three times' },
+  WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, wave side to side two or three times at a relaxed pace' },
   FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
-  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up, then hold still' },
-  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake hard and fast side to side for a full second (any hand shape)', urgent: true },
+  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up once, then hold still' },
+  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake quickly, like shaking water off, for about a second (any hand shape)', urgent: true },
 };
 
 // Replies may be plain strings or {text, lcd:[line1, line2]} when the auto LCD wrap would be ugly.
@@ -883,10 +881,10 @@ function bendLabel(element, change, trigger) {
   const strong = document.createElement('strong'); strong.textContent = trigger;
   element.replaceChildren(`${change} / `, strong);
 }
-// Same rule as the firmware's handShape(): only index, ring and pinky count.
+// Same rule as the firmware's handShape(): middle and ring closed, then index and pinky decide.
 function handShape(pattern) {
-  const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
-  if (!ring) return null;
+  const [, index, middle, ring, pinky] = [...pattern].map((bit) => bit === '1');
+  if (!middle || !ring) return null;
   if (index && pinky) return 'FIST';
   if (!index && pinky) return 'POINT';
   if (index && !pinky) return 'PINKY';
@@ -896,17 +894,14 @@ function renderHand() {
   const ready = state.useFlex && state.calibrated;
   const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
-    const i = Number(finger.dataset.finger), ignored = i === 2;
-    // Recognition never uses the middle finger; it copies its neighbours so a fist never shows it raised.
-    const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
+    const i = Number(finger.dataset.finger), bend = bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
     finger.dataset.bent = String(ready && state.pattern[i] === '1');
-    finger.dataset.ignored = String(ignored);
     const chip = $('finger-chips').children[i];
-    chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
+    chip.dataset.bent = finger.dataset.bent;
   }
   const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
     const live = row.querySelector('.bend-live'), input = row.querySelector('input');
@@ -985,7 +980,7 @@ function receive(input) {
   const notice = `${state.notice}${state.remaining > 0 ? ` (${state.remaining})` : ''}`;
   if (displayedNotice !== notice) { $('device-notice').textContent = notice; displayedNotice = notice; }
   $('sensor-summary').textContent = `MPU ${state.mpu ? 'connected' : 'unavailable'} · LCD ${state.lcd ? 'connected' : 'unavailable'}`;
-  $('pattern').textContent = `${state.pattern} · middle not used`;
+  $('pattern').textContent = state.pattern;
   fingerNames.forEach((_, index) => {
     const row = $('sensor-rows').children[index];
     row.children[2].textContent = state.flex[index]; row.children[3].textContent = Math.round(state.baseline[index]); row.children[4].textContent = state.delta[index];
@@ -993,7 +988,7 @@ function receive(input) {
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
-  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
   // Ignore a snapshot taken before the glove applied a just-clicked environment.
   const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
   if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
@@ -1064,7 +1059,7 @@ function init() {
     Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
-    track.append(live, input); row.append(label, track, value); row.hidden = name === 'Middle'; $('bend-rows').append(row);
+    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
@@ -1144,11 +1139,16 @@ constexpr int flexPins[5] = {33, 35, 36, 34, 32};
 constexpr int DEFAULT_BEND_ON[5] = {150, 100, 100, 130, 110};
 constexpr int BEND_MIN = 20, BEND_MAX = 1000;
 int bendOn[5] = {150, 100, 100, 130, 110};
-constexpr int F_INDEX = 1, F_RING = 3, F_PINKY = 4;
+constexpr int F_INDEX = 1, F_MIDDLE = 2, F_RING = 3, F_PINKY = 4;
 // Deliberately loose thresholds (degrees, degrees/second, milliseconds) so demo gestures trigger easily.
-constexpr float MOVE_START = 90, REST_SPEED = 35, STILL_SPEED = 80, SWING_SPEED = 60;
-constexpr float FLIP_TILT = 100, FLIP_TURN = 110, SHAKE_ENERGY = 230;
-constexpr int SHAKE_SWINGS = 4, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 1000;
+constexpr float MOVE_START = 90, REST_SPEED = 35, STILL_SPEED = 80;
+// A direction change only counts when the speed passes this share of the movement's peak,
+// so the small bounce after a nod or flip is not mistaken for another swing.
+constexpr float SWING_MIN = 50, SWING_SHARE = 0.35f;
+constexpr float FLIP_TILT = 70, FLIP_TURN = 120, SHAKE_ENERGY = 150, SHAKE_RATE = 5;
+constexpr int SHAKE_SWINGS = 5, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
+// A movement ends once the hand has been still this many samples (after a minimum length).
+constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
 constexpr int MOTOR_PIN = 26;
 TwoWire lcdWire(1);
 Preferences prefs;
@@ -1170,12 +1170,12 @@ bool bent[5] = {};
 float acc[3] = {}, gyr[3] = {}, rawGyr[3] = {}, gyroBias[3] = {};
 float preA[PRE][3] = {}, preG[PRE][3] = {};
 float moveA[WINDOW][3] = {}, moveG[WINDOW][3] = {};
-int preIndex = 0, preCount = 0, captureIndex = 0;
+int preIndex = 0, preCount = 0, captureIndex = 0, quietSamples = 0;
 bool capturing = false, motionArmed = false;
 uint32_t restSince = 0, cooldownAt = 0;
 int shapeCandidate = -1, heldShape = -1, lastGesture = -1;
 uint32_t candidateAt = 0;
-struct MotionInfo { int swings; float turn, tilt, energy; int result; } lastMotion = {0, 0, 0, 0, -1};
+struct MotionInfo { int swings; float rate, turn, tilt, energy; int result; } lastMotion = {0, 0, 0, 0, 0, -1};
 uint32_t lastSample = 0, lastFlexSample = 0, lastSerial = 0, lastPublish = 0, lastRetry = 0, lastLCD = 0;
 char notice[160] = "Starting";
 char bootId[12];
@@ -1267,11 +1267,11 @@ void readFlex() {
     if (bent[i]) mask |= 1 << i;
   }
 }
-// Only index, ring and pinky decide a hand shape. Thumb and middle are not used,
-// so one noisy sensor cannot break recognition.
+// Index, middle, ring and pinky decide a hand shape; the thumb is not used.
+// Middle and ring must both be closed, so a relaxed half-open hand is never a shape.
 int handShape() {
-  bool i = bent[F_INDEX], r = bent[F_RING], p = bent[F_PINKY];
-  if (!r) return -1;
+  bool i = bent[F_INDEX], m = bent[F_MIDDLE], r = bent[F_RING], p = bent[F_PINKY];
+  if (!m || !r) return -1;
   if (i && p) return G_FIST;
   if (!i && p) return G_POINT;
   if (i && !p) return G_PINKY;
@@ -1406,7 +1406,7 @@ void finishJob(const char* text) {
   job = Job::Idle; resetRecognition(); setNotice(text);
 }
 void beginCapture() {
-  captureIndex = 0;
+  captureIndex = quietSamples = 0;
   for (int i = 0; i < PRE; ++i) {
     int j = (preIndex + i) % PRE;
     memcpy(moveA[i], preA[j], sizeof(acc)); memcpy(moveG[i], preG[j], sizeof(gyr));
@@ -1414,30 +1414,38 @@ void beginCapture() {
   }
   capturing = true;
 }
-// Rule-based motion classes that do not depend on how the MPU is mounted:
-// shake = hard and repeated, flip = ends turned over, wave = back and forth, nod = out and back once.
+// Rule-based motion classes that do not depend on how the MPU is mounted. Each
+// movement is cut from rest to rest, then told apart by clearly different traits:
+//   shake = many fast direction changes, flip = ends turned over (gravity moved),
+//   wave = back and forth twice or more, nod = out and back exactly once.
 int classifyMotion(MotionInfo& m) {
-  float startG[3] = {}, endG[3] = {}, net[3] = {}, rms[3] = {};
-  for (int i = 0; i < PRE; ++i) for (int k = 0; k < 3; ++k) { startG[k] += moveA[i][k]; endG[k] += moveA[WINDOW-PRE+i][k]; }
+  int len = captureIndex, end = quietSamples >= END_QUIET_SAMPLES ? len - quietSamples : len;
+  int tail = min(END_QUIET_SAMPLES, len - PRE);
+  float startG[3] = {}, endG[3] = {}, net[3] = {}, rms[3] = {}, peak = 0;
+  for (int i = 0; i < PRE; ++i) for (int k = 0; k < 3; ++k) startG[k] += moveA[i][k];
+  for (int i = len - tail; i < len; ++i) for (int k = 0; k < 3; ++k) endG[k] += moveA[i][k];
   normalize(startG); normalize(endG);
   float dot = constrain(startG[0]*endG[0] + startG[1]*endG[1] + startG[2]*endG[2], -1.0f, 1.0f);
   m.tilt = acosf(dot) * 57.2958f;
+  int moving = max(1, end - PRE);
+  for (int i = 0; i < len; ++i) for (int k = 0; k < 3; ++k) net[k] += moveG[i][k] * SAMPLE_MS / 1000.0f;
+  for (int i = PRE; i < end; ++i) for (int k = 0; k < 3; ++k) rms[k] += moveG[i][k] * moveG[i][k];
   float energy = 0;
-  for (int i = 0; i < WINDOW; ++i) for (int k = 0; k < 3; ++k) {
-    net[k] += moveG[i][k] * SAMPLE_MS / 1000.0f; rms[k] += moveG[i][k] * moveG[i][k];
-  }
   int axis = 0;
   for (int k = 0; k < 3; ++k) { energy += rms[k]; if (rms[k] > rms[axis]) axis = k; }
-  m.energy = sqrtf(energy / WINDOW);
+  m.energy = sqrtf(energy / moving);
   m.turn = fabsf(net[axis]);
+  for (int i = PRE; i < end; ++i) peak = max(peak, fabsf(moveG[i][axis]));
+  float swingSpeed = max(SWING_MIN, SWING_SHARE * peak);
   int swings = 0, direction = 0;
-  for (int i = 0; i < WINDOW; ++i) {
+  for (int i = PRE; i < end; ++i) {
     float v = moveG[i][axis];
-    int next = v > SWING_SPEED ? 1 : v < -SWING_SPEED ? -1 : 0;
+    int next = v > swingSpeed ? 1 : v < -swingSpeed ? -1 : 0;
     if (next && next != direction) { if (direction) ++swings; direction = next; }
   }
   m.swings = swings;
-  if (m.energy >= SHAKE_ENERGY && swings >= SHAKE_SWINGS) return G_SHAKE;
+  m.rate = swings * 1000.0f / (moving * SAMPLE_MS);
+  if (swings >= SHAKE_SWINGS && m.rate >= SHAKE_RATE && m.energy >= SHAKE_ENERGY) return G_SHAKE;
   // A flex shape at the end means the hand was moving into a sign, not making a motion.
   if (useFlex && flexReady && handShape() >= 0) return -1;
   if (swings <= 1 && (m.tilt >= FLIP_TILT || m.turn >= FLIP_TURN)) return G_FLIP;
@@ -1450,7 +1458,7 @@ void finishCapture() {
   MotionInfo m = {};
   m.result = classifyMotion(m);
   lastMotion = m;
-  if (debugOn) Serial.printf("MOTION swings=%d turn=%.0f tilt=%.0f energy=%.0f -> %s\n", m.swings, m.turn, m.tilt, m.energy, m.result >= 0 ? gestureNames[m.result] : "NONE");
+  if (debugOn) Serial.printf("MOTION swings=%d rate=%.1f/s turn=%.0f tilt=%.0f energy=%.0f -> %s\n", m.swings, m.rate, m.turn, m.tilt, m.energy, m.result >= 0 ? gestureNames[m.result] : "NONE");
   if (m.result >= 0) {
     showGesture(m.result, "motion");
     shapeCandidate = heldShape = -1;
@@ -1487,7 +1495,8 @@ void tickRecognition() {
   if (capturing) {
     if (!mpuOK) { capturing = false; motionArmed = false; restSince = 0; cooldownAt = now; return; }
     memcpy(moveA[captureIndex], acc, sizeof(acc)); memcpy(moveG[captureIndex], gyr, sizeof(gyr));
-    if (++captureIndex >= WINDOW) finishCapture();
+    quietSamples = magnitude(gyr) < REST_SPEED ? quietSamples + 1 : 0;
+    if (++captureIndex >= WINDOW || (captureIndex >= PRE + MIN_MOVE_SAMPLES && quietSamples >= END_QUIET_SAMPLES)) finishCapture();
     return;
   }
   if (job != Job::Idle) return;
@@ -1596,7 +1605,7 @@ void publishState() {
   addInts(root,"flex",raw,5); addInts(root,"delta",delta,5); addNumbers(root,"baseline",baseline,5);
   addNumbers(root,"acc",acc,3,9.80665f); addNumbers(root,"gyro",gyr,3);
   cJSON* motion = cJSON_AddObjectToObject(root,"motion");
-  cJSON_AddNumberToObject(motion,"swings",lastMotion.swings); cJSON_AddNumberToObject(motion,"turn",lastMotion.turn);
+  cJSON_AddNumberToObject(motion,"swings",lastMotion.swings); cJSON_AddNumberToObject(motion,"rate",lastMotion.rate); cJSON_AddNumberToObject(motion,"turn",lastMotion.turn);
   cJSON_AddNumberToObject(motion,"tilt",lastMotion.tilt); cJSON_AddNumberToObject(motion,"energy",lastMotion.energy);
   cJSON_AddStringToObject(motion,"result",lastMotion.result >= 0 ? gestureNames[lastMotion.result] : "");
   cJSON* events = cJSON_AddArrayToObject(root,"events");

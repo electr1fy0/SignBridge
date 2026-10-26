@@ -84,10 +84,10 @@ function bendLabel(element, change, trigger) {
   const strong = document.createElement('strong'); strong.textContent = trigger;
   element.replaceChildren(`${change} / `, strong);
 }
-// Same rule as the firmware's handShape(): only index, ring and pinky count.
+// Same rule as the firmware's handShape(): middle and ring closed, then index and pinky decide.
 function handShape(pattern) {
-  const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
-  if (!ring) return null;
+  const [, index, middle, ring, pinky] = [...pattern].map((bit) => bit === '1');
+  if (!middle || !ring) return null;
   if (index && pinky) return 'FIST';
   if (!index && pinky) return 'POINT';
   if (index && !pinky) return 'PINKY';
@@ -97,17 +97,14 @@ function renderHand() {
   const ready = state.useFlex && state.calibrated;
   const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
-    const i = Number(finger.dataset.finger), ignored = i === 2;
-    // Recognition never uses the middle finger; it copies its neighbours so a fist never shows it raised.
-    const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
+    const i = Number(finger.dataset.finger), bend = bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
     finger.dataset.bent = String(ready && state.pattern[i] === '1');
-    finger.dataset.ignored = String(ignored);
     const chip = $('finger-chips').children[i];
-    chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
+    chip.dataset.bent = finger.dataset.bent;
   }
   const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
     const live = row.querySelector('.bend-live'), input = row.querySelector('input');
@@ -186,7 +183,7 @@ function receive(input) {
   const notice = `${state.notice}${state.remaining > 0 ? ` (${state.remaining})` : ''}`;
   if (displayedNotice !== notice) { $('device-notice').textContent = notice; displayedNotice = notice; }
   $('sensor-summary').textContent = `MPU ${state.mpu ? 'connected' : 'unavailable'} · LCD ${state.lcd ? 'connected' : 'unavailable'}`;
-  $('pattern').textContent = `${state.pattern} · middle not used`;
+  $('pattern').textContent = state.pattern;
   fingerNames.forEach((_, index) => {
     const row = $('sensor-rows').children[index];
     row.children[2].textContent = state.flex[index]; row.children[3].textContent = Math.round(state.baseline[index]); row.children[4].textContent = state.delta[index];
@@ -194,7 +191,7 @@ function receive(input) {
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
-  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
   // Ignore a snapshot taken before the glove applied a just-clicked environment.
   const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
   if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
@@ -265,7 +262,7 @@ function init() {
     Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
-    track.append(live, input); row.append(label, track, value); row.hidden = name === 'Middle'; $('bend-rows').append(row);
+    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;

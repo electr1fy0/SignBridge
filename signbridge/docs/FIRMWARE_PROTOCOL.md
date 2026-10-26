@@ -27,7 +27,7 @@ Snapshots include `type: "state"`, a per-boot `boot` identifier, `uptime`, devic
 health, calibration progress, `notice`, raw flex/delta/baseline arrays,
 acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
 the current `env` id, the five per-finger bend triggers `bendOn`, hardware settings, the most recent 12 conversation events,
-and `motion` (`swings`, `turn`, `tilt`, `energy`, `result`) for the last
+and `motion` (`swings`, `rate`, `turn`, `tilt`, `energy`, `result`) for the last
 analysed movement.
 
 An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `env`,

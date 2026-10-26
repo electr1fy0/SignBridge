@@ -85,7 +85,7 @@
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">The middle sensor (GPIO36) is shown but never used for recognition.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
   <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>

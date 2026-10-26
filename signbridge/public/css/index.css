@@ -86,11 +86,9 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .hand .palm { fill: var(--palm); }
 .hand .finger { fill: var(--hand); transform-box: fill-box; transform-origin: 50% 100%; transition: transform .25s cubic-bezier(.3,.7,.4,1), fill .2s; }
 .hand .finger[data-bent="true"] { fill: var(--accent); }
-.hand .finger[data-ignored="true"] { opacity: .45; }
 .chips { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 0; margin: 8px 0 18px; }
 .chips li { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--fill); color: var(--secondary); transition: background .2s, color .2s; }
 .chips li[data-bent="true"] { background: var(--accent); color: #fff; }
-.chips li[data-ignored="true"] { opacity: .45; text-decoration: line-through; }
 .meter { border-top: 1px solid var(--separator); padding-top: 14px; }
 .meter-head { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
 .value { font-variant-numeric: tabular-nums; font-weight: 500; }
