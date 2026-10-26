@@ -84,7 +84,7 @@ These lines **never** trigger speech synthesis or conversation entries. Instead,
 
 The web application automatically detects the active sketch from the startup banner and works with both:
 
-### Sketch A — Finger-Based Signs (`meow_calibrated.cpp` / `glove_calibration.ino`)
+### Sketch A — Finger-Based Signs (`glove_calibration.ino`)
 - Hardware: 5 Flex Sensors + MPU6500 + 16x2 LCD
 - Startup Banner: `DIFFERENCE-BASED DETECTION`
 - Signs:

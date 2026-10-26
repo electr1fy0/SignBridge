@@ -35,7 +35,6 @@ Combines ESP32 microcontroller firmware (flex sensors, 6-axis MPU6500 IMU, 16x2 
 
 ```
 ├── glove_calibration.ino          # Sketch A: Difference-based 5-finger bend calibration & recognition
-├── meow_calibrated.cpp            # Firmware: Calibrated baseline gesture recognition engine
 ├── motion_gestures.ino            # Sketch B: 3D motion-based gesture detection (MPU6500 IMU)
 ├── signbridge/                    # Web Application
 │   ├── docs/
@@ -87,7 +86,7 @@ Open your browser at:
 
 ## 🧤 Firmware Sketches
 
-### Sketch A — Finger-Based Gestures (`glove_calibration.ino` / `meow_calibrated.cpp`)
+### Sketch A — Finger-Based Gestures (`glove_calibration.ino`)
 - **Hardware:** 5 Flex Sensors (ADC) + MPU6500 (I2C0: GPIO 21/22) + 16x2 LCD (I2C1: GPIO 18/19).
 - **Detection:** Difference-based delta thresholding with per-sensor calibration and hysteresis.
 - **Signs:** `OKAY` (11000), `WATER` (10001), `TWO` (10011), `THREE` (00011), `FOUR` (10000), `SEVEN` (10010).
@@ -100,6 +99,26 @@ Open your browser at:
 ---
 
 ## 📡 Serial Protocol & Safety
+
+### Serial Monitor controls
+
+Open Serial Monitor at **115200 baud**. Both sketches now print sensor readings
+every 700 ms after startup calibration. Send `p` to pause or resume the stream.
+
+| Command | `glove_calibration.ino` | `motion_gestures.ino` |
+|---|---|---|
+| `p` | Toggle flex, delta, bend pattern, acceleration, and gyro readings | Toggle acceleration and gyro readings |
+| `d` | Not used | Toggle gesture match scores; lower means a closer match |
+| `s` | Show saved gesture training | Show saved gesture training |
+| `c` | Recalibrate straight fingers | Recalibrate the flat, still hand |
+
+Acceleration is printed in m/s² and gyro readings in degrees/second. Live
+readings start ON; motion match-score debug starts OFF. These toggles are
+independent and reset to their defaults after a restart. The web app's
+**Toggle Live Stream ('p')** button works with either updated sketch.
+
+Flash only one sketch at a time. In Arduino IDE, keep each `.ino` in its own
+same-named sketch folder so the two sketches are not compiled together.
 
 SignBridge parses streaming serial output with strict delimiter isolation:
 - **Recognition Event:** `>>> RECOGNIZED: SIGN_NAME <<<`

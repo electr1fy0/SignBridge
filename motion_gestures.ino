@@ -13,6 +13,7 @@
 //   c   + Enter : recalibrate (hand flat, palm down, still)
 //   s   + Enter : show training status
 //   d   + Enter : debug on/off (shows match scores)
+//   p   + Enter : live sensor readings on/off (on at startup)
 //   X   + Enter : erase all training
 //
 // GOLDEN RULE: between signs, rest your hand FLAT,
@@ -109,6 +110,8 @@ int stillCount = 0;
 int lastShown = -1;
 unsigned long lastShownTime = 0;
 unsigned long lastSample = 0;
+unsigned long lastSerial = 0;
+bool liveOutput = true;
 
 // ---------------- LCD STATE ----------------
 bool lcdOK = false;
@@ -676,6 +679,19 @@ void recognizeStep() {
 // SERIAL COMMANDS
 // =====================================================
 
+// Use the same telemetry format as the finger sketch and web diagnostics.
+// The motion sketch stores acceleration in g; report it in m/s^2.
+void printReadings() {
+  if (mpuOK) {
+    Serial.printf("ACC: X=%.2f Y=%.2f Z=%.2f\n",
+                  acc[0] * 9.80665f, acc[1] * 9.80665f, acc[2] * 9.80665f);
+    Serial.printf("GYRO: X=%.2f Y=%.2f Z=%.2f\n",
+                  gyr[0], gyr[1], gyr[2]);
+  }
+  Serial.printf("STATUS: MPU=%s LCD=%s\n",
+                mpuOK ? "OK" : "FAIL", lcdOK ? "OK" : "FAIL");
+}
+
 void handleSerial() {
   while (Serial.available()) {
     char c = Serial.read();
@@ -688,6 +704,9 @@ void handleSerial() {
     } else if (c == 'd' || c == 'D') {
       debugOn = !debugOn;
       Serial.printf("Debug: %s\n", debugOn ? "ON" : "OFF");
+    } else if (c == 'p' || c == 'P') {
+      liveOutput = !liveOutput;
+      Serial.printf("Live readings: %s\n", liveOutput ? "ON" : "OFF");
     } else if (c == 'X') {
       memset(&db, 0, sizeof(db));
       saveTraining();
@@ -725,9 +744,13 @@ void setup() {
   Serial.println("=================================");
   Serial.println("1-8 = train   c = calibrate   s = status");
   Serial.println("d = debug     X = erase all");
+  Serial.println("p = live sensor readings on/off");
 
   if (mpuOK) calibrate();
   showStatus();
+  Serial.println("Sensor units: ACC=m/s^2, GYRO=deg/s");
+  Serial.println("Live readings: ON");
+  Serial.println("Debug: OFF");
 }
 
 void loop() {
@@ -756,5 +779,10 @@ void loop() {
   if (now - lastLCD >= 300) {
     lastLCD = now;
     updateLCD();
+  }
+
+  if (liveOutput && now - lastSerial >= 700) {
+    lastSerial = now;
+    printReadings();
   }
 }

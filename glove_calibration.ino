@@ -149,9 +149,9 @@ unsigned long lastSerial = 0;
 unsigned long lastMPURetry = 0;
 
 // Live sensor printing in Serial Monitor.
-// OFF by default so commands and results are easy to read.
+// ON by default so sensor values appear immediately after calibration.
 // Type p + Enter to switch it on/off.
-bool liveOutput = false;
+bool liveOutput = true;
 
 // ======================================
 // MPU REGISTER FUNCTIONS
@@ -1001,6 +1001,8 @@ void setup() {
   calibrateStraight();
 
   showTrainingStatus();
+  Serial.println("Sensor units: FLEX/DELTA=ADC counts, ACC=m/s^2, GYRO=deg/s");
+  Serial.println("Live readings: ON");
 }
 
 // ======================================

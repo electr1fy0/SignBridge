@@ -115,4 +115,4 @@ Let the user pick a scenario on the website, so the same hand shape means a diff
 Be upfront with evaluators that in scenario mode some outputs are full phrases built from simple signs, not exact sign-language translations. Supporting Up vs Down and Hello vs Thank you needs the ESP32 code to use MPU tilt as well.
 ```
 
-In VS Code, the "Open Preview" button (or Ctrl + Shift + V) shows the tables nicely formatted.
+In VS Code, use the Markdown preview to view the tables.

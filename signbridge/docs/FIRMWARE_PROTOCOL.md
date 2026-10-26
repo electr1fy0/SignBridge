@@ -3,7 +3,7 @@
 ## 1. Why Existing Firmware Cannot Receive Arbitrary Serial Text
 
 In both existing sketches:
-- **Sketch A** (`meow_calibrated.cpp` / `glove_calibration.ino`)
+- **Sketch A** (`glove_calibration.ino`)
 - **Sketch B** (`motion_gestures.ino`)
 
 The serial input loop is implemented as follows:
@@ -91,7 +91,7 @@ Hardware: Connect a transistor/MOSFET driver for a small 3V disc vibration motor
 
 ## 5. Ready-to-Paste C++ Implementation for ESP32
 
-Add these additions to `meow_calibrated.cpp`:
+Add these additions to `glove_calibration.ino`:
 
 ```cpp
 // -------------------------------------------------------------
