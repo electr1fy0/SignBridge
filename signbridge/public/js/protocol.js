@@ -1,13 +1,4 @@
-// Outgoing glove protocol (PROPOSED — not implemented by the current sketches),
-// 16x2 LCD formatting and vibration pattern mapping. Pure module.
-//
-// WHY THIS IS OFF BY DEFAULT: both current sketches read serial one byte at a time
-// and treat single characters as commands — '1'..'8' start (blocking) training,
-// 'c' recalibrates, 's' prints status, and 'X' ERASES ALL TRAINED GESTURES.
-// Sending any text such as "MSG|YES" to unmodified firmware would trigger those.
-// The app only writes messages after the user confirms the firmware implements
-// the framed "~" protocol documented in docs/FIRMWARE_PROTOCOL.md.
-
+// LCD formatting and haptic codes shared with the unified firmware.
 export const LCD_COLS = 16;
 export const LCD_ROWS = 2;
 
@@ -53,7 +44,7 @@ export function formatLcd(text, override) {
   return { lines: [lines[0], rest.slice(0, LCD_COLS - 2).trimEnd() + '..'], truncated: true };
 }
 
-/** Suggested motor patterns, in ms: [on, off, on, …]. Firmware must implement these. */
+/** Suggested motor patterns, in ms: [on, off, on, …]. Implemented by the unified firmware. */
 export const VIBES = {
   ACK: { label: 'Short pulse', meaning: 'Acknowledgment / simple confirmation', pattern: [150] },
   YES: { label: 'Two short pulses', meaning: 'Yes', pattern: [150, 150, 150] },
@@ -69,36 +60,6 @@ export function vibFor(text) {
   if (/^(no|nope)\b(?!\s+problem)/.test(t)) return 'NO';
   if (/^(okay|ok|got it|sure|done)\b/.test(t)) return 'ACK';
   return 'MSG';
-}
-
-export const DEFAULT_TEMPLATE = '~MSG|{id}|{vib}|{line1}|{line2}';
-const FIELD_OK = /^[A-Z0-9 .,!?'-]*$/;
-
-/** @returns {string|null} a human-readable problem, or null if the command is safe to send. */
-export function validateCommand(cmd) {
-  if (!cmd.startsWith('~')) return 'Command must start with "~" so updated firmware can tell it apart from single-key commands.';
-  if (/[\r\n]/.test(cmd)) return 'Command must be a single line.';
-  if (!/^[\x20-\x7E]+$/.test(cmd)) return 'Command must be printable ASCII.';
-  if (cmd.length > 96) return 'Command is too long (max 96 characters).';
-  if (/[{}]/.test(cmd)) return 'Template contains an unknown placeholder.';
-  return null;
-}
-
-/** Fill the template and validate. Throws on anything unsafe. Returns the line incl. "\n". */
-export function buildCommand(template, { id, vib, lines }) {
-  const fields = { id, vib, line1: lines[0] ?? '', line2: lines[1] ?? '' };
-  for (const [k, v] of Object.entries(fields)) {
-    if (typeof v !== 'string' || !FIELD_OK.test(v)) throw new Error(`Invalid ${k} field`);
-  }
-  const cmd = String(template).replace(/\{(id|vib|line1|line2)\}/g, (_, k) => fields[k]);
-  const problem = validateCommand(cmd);
-  if (problem) throw new Error(problem);
-  return cmd + '\n';
-}
-
-/** Short hardware ACK id: 4 chars [0-9A-Z]. */
-export function makeAckId() {
-  return Math.floor(Math.random() * 36 ** 4).toString(36).toUpperCase().padStart(4, '0');
 }
 
 /** Unique-enough id that also works outside secure contexts (crypto.randomUUID doesn't on LAN http). */

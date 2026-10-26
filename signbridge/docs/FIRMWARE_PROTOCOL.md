@@ -1,227 +1,95 @@
-# SignBridge Firmware Protocol Specification & Integration Guide
+# Unified firmware protocol
 
-## 1. Why Existing Firmware Cannot Receive Arbitrary Serial Text
+Implemented in `firmware/SignBridge/SignBridge.ino`. The embedded page uses the
+same origin as the device; USB Web Serial is no longer used by the website.
 
-In both existing sketches:
-- **Sketch A** (`glove_calibration.ino`)
-- **Sketch B** (`motion_gestures.ino`)
+## Routes
 
-The serial input loop is implemented as follows:
+- `GET /` returns the complete local page from flash.
+- `GET /api/state` returns the latest state snapshot.
+- `GET /ws` upgrades to WebSocket. State snapshots broadcast every 400 ms.
+- `POST /api/command` accepts a JSON command, limited to 768 bytes.
 
-```cpp
-void handleSerial() {
-  while (Serial.available()) {
-    char command = Serial.read();
-    if (command >= '1' && command < '1' + NUM_GESTURES) {
-      trainGesture(command - '1');  // BLOCKING training routine
-    } else if (command == 'c' || command == 'C') {
-      calibrateStraight();
-    } else if (command == 'p' || command == 'P') {
-      liveOutput = !liveOutput;
-    } else if (command == 'X') {
-      // DANGER: ERASES ALL TRAINED GESTURES IN FLASH!
-      memset(trainedMasks, 255, sizeof(trainedMasks));
-      saveTraining();
-    }
-  }
-}
+The server runs on its own ESP32 task. HTTP callbacks validate commands and put
+them in a bounded queue; `loop()` performs sensor, LCD, flash and motor work.
+Only a mutex-protected state snapshot is shared across those tasks. Slow network
+clients are timed out; broadcast work is coalesced to avoid an unbounded backlog.
+Calibration and motion capture are sample-driven state machines.
+
+The local Wi-Fi password controls who can join. Anyone with device network
+access can view values and operate controls; there are no user accounts. Change
+`AP_PASSWORD` before using it outside a trusted demonstration environment. There
+is no internet-facing service or external font/CDN dependency.
+
+## State
+
+Snapshots include `type: "state"`, a per-boot `boot` identifier, `uptime`, device
+health, calibration/training progress, `notice`, raw flex/delta/baseline arrays,
+acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
+training counts, hardware settings, and the most recent 12 conversation events.
+When debug is enabled, `scores` contains the best distance for each motion
+(`-1` means no score yet). The movement acceptance threshold is 0.65.
+
+An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `requestId`,
+`lcd`, and `haptic`. Clients deduplicate by boot + sequence and do not speak
+initial/reconnected history again. All connected screens receive the same
+recent events. Browsers keep at most 60 rendered entries in memory.
+
+## Commands
+
+```json
+{"op":"reply","id":"browser-unique-id","text":"I'll get you water.","line1":"I'LL GET YOU","line2":"WATER.","vib":"MSG"}
 ```
 
-### The Conflict:
-If a web application sends plain text like `"PLEASE_WAIT"`, `"I'LL_HEAT_IT"`, or `"NO_PROBLEM"`:
-1. The character `'1'` triggers training mode and blocks `loop()`!
-2. The character `'c'` triggers sensor recalibration!
-3. **Most critically, the uppercase letter `'X'` instantly erases all trained gesture masks from NVS Flash memory!**
+Reply text is 1–160 UTF-8 bytes; each LCD line is printable ASCII and at most
+16 characters. The browser sanitizes/wraps LCD text and displays a shortening
+preview. Empty lines are allowed. Vibration codes: `ACK`, `YES`, `NO`, `MSG`,
+`URGENT`. Firmware writes both LCD rows, triggers the configured driver, and
+adds a `reply` event using the request ID. `lcd: false` means the display write
+was unavailable/failed. It never labels queue acceptance as LCD delivery.
+No sensor verifies that a motor physically moved.
 
-Therefore, sending arbitrary incoming text over serial without framing and protocol isolation would corrupt the glove.
+Other commands:
 
----
+```json
+{"op":"calibrate"}
+{"op":"cancel"}
+{"op":"trainFlex","index":0}
+{"op":"trainMotion","index":0}
+{"op":"live","value":false}
+{"op":"debug","value":true}
+{"op":"settings","useFlex":true,"ignoreMiddle":false,"useMotor":false}
+{"op":"erase","confirm":"ERASE"}
+```
 
-## 2. Proposed Safe Framed Command Format
+Finger indices are 0–5; motion indices are 0–7, as listed in the project guide.
+Booleans and indices are validated, and training/settings changes are refused
+while another task is active. Reset requires explicit confirmation in the UI
+and the `confirm` field on the wire. HTTP 202 means queued; subsequent state
+and reply events report execution. Queue overflow returns 503.
 
-To safely distinguish web application commands from the single-key Arduino IDE terminal keys, all incoming web messages must start with the tilde prefix `~` and end with a newline `\n`.
+Hardware settings and training persist; serial/debug toggles reset at boot.
+Pausing serial output does not pause wireless telemetry or recognition.
 
-### Command Syntax:
+## Serial
+
+Serial Monitor runs at 115200 baud. Commands are whole lines, separated by
+newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `f1..f6`,
+`m1..m8`, `reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
+text is never interpreted as individual training/reset keys.
+
+Recognition keeps the existing diagnostic-friendly format:
+
 ```text
-~MSG|<ID>|<VIB>|<LINE1>|<LINE2>\n
+>>> RECOGNIZED: WATER <<<
+FLEX  (T I M R P): 2410 | 2980 | 1800 | 3120 | 2875
+DELTA (T I M R P): 310 | 250 | 0 | 15 | 20
+BENT PATTERN: 11000
+ACC: X=0.00 Y=0.00 Z=9.81
+GYRO: X=0.00 Y=0.00 Z=0.00
+STATUS: MPU=OK LCD=OK
 ```
 
-### Field Definitions:
-| Field | Type | Description | Example |
-|---|---|---|---|
-| `~` | Prefix | Framing delimiter distinguishing incoming packets from single-char commands | `~` |
-| `MSG` | Opcode | Message display & haptic command | `MSG` |
-| `<ID>` | Alphanumeric (4 chars) | Transaction ID for confirmation acknowledgment | `A7K2` |
-| `<VIB>` | String | Vibration pattern code (`ACK`, `YES`, `NO`, `MSG`, `URGENT`) | `YES` |
-| `<LINE1>` | ASCII (Max 16 chars) | Top line text for 16x2 LCD display | `COLD OR ROOM` |
-| `<LINE2>` | ASCII (Max 16 chars) | Bottom line text for 16x2 LCD display | `TEMP WATER?` |
-
----
-
-## 3. Firmware Acknowledgment (ACK)
-
-When the ESP32 receives, parses, and displays the message, it replies over USB serial:
-
-```text
-ACK|<ID>\n
-```
-
-Example:
-```text
-ACK|A7K2\n
-```
-
-The SignBridge web app's parser immediately detects this line and changes the delivery badge in the conversation log from `Delivered to Screen` to `✓✓ Hardware ACK`.
-
----
-
-## 4. Suggested Vibration Motor Patterns
-
-Hardware: Connect a transistor/MOSFET driver for a small 3V disc vibration motor to an unused digital GPIO (e.g., **GPIO 26** or **GPIO 27**).
-
-| VIB Code | Timing Sequence (ms) | Sensation | Use Case |
-|---|---|---|---|
-| `ACK` | `[150]` | 1 brief tap | Simple acknowledgment / confirmation |
-| `YES` | `[150, 150, 150]` | 2 short pulses | Affirmative ("Yes", "Understood") |
-| `NO` | `[800]` | 1 sustained buzz | Negative ("No", "Cannot do that") |
-| `MSG` | `[150, 150, 150, 150, 150]` | 3 distinct pulses | Standard incoming reply from partner |
-| `URGENT`| `[500, 120, 150, 120, 500, ...]` | Pulsing siren rhythm | Emergency, pain, or doctor requests |
-
----
-
-## 5. Ready-to-Paste C++ Implementation for ESP32
-
-Add these additions to `glove_calibration.ino`:
-
-```cpp
-// -------------------------------------------------------------
-// 1. HARDWARE PIN DEFINITIONS
-// -------------------------------------------------------------
-#define VIB_MOTOR_PIN 26 // Connect gate/base of vibration motor driver
-
-// -------------------------------------------------------------
-// 2. NON-BLOCKING HAPTIC ENGINE
-// -------------------------------------------------------------
-struct VibrationSequence {
-  uint16_t pulses[8];
-  uint8_t count;
-  uint8_t index;
-  uint32_t stepTime;
-  bool state;
-  bool active;
-};
-
-VibrationSequence vibEngine = { {0}, 0, 0, 0, false, false };
-
-void startVibrationPattern(const char* code) {
-  vibEngine.active = false;
-  digitalWrite(VIB_MOTOR_PIN, LOW);
-
-  if (strcmp(code, "ACK") == 0) {
-    vibEngine.pulses[0] = 150;
-    vibEngine.count = 1;
-  } else if (strcmp(code, "YES") == 0) {
-    vibEngine.pulses[0] = 150; vibEngine.pulses[1] = 150; vibEngine.pulses[2] = 150;
-    vibEngine.count = 3;
-  } else if (strcmp(code, "NO") == 0) {
-    vibEngine.pulses[0] = 800;
-    vibEngine.count = 1;
-  } else if (strcmp(code, "URGENT") == 0) {
-    vibEngine.pulses[0] = 500; vibEngine.pulses[1] = 120; vibEngine.pulses[2] = 500; vibEngine.pulses[3] = 120;
-    vibEngine.count = 4;
-  } else { // "MSG" default
-    vibEngine.pulses[0] = 150; vibEngine.pulses[1] = 150; vibEngine.pulses[2] = 150;
-    vibEngine.pulses[3] = 150; vibEngine.pulses[4] = 150;
-    vibEngine.count = 5;
-  }
-
-  vibEngine.index = 0;
-  vibEngine.state = true;
-  vibEngine.stepTime = millis();
-  vibEngine.active = true;
-  digitalWrite(VIB_MOTOR_PIN, HIGH);
-}
-
-void updateVibrationEngine() {
-  if (!vibEngine.active) return;
-  uint32_t now = millis();
-  if (now - vibEngine.stepTime >= vibEngine.pulses[vibEngine.index]) {
-    vibEngine.index++;
-    if (vibEngine.index >= vibEngine.count) {
-      vibEngine.active = false;
-      digitalWrite(VIB_MOTOR_PIN, LOW);
-      return;
-    }
-    vibEngine.state = !vibEngine.state;
-    digitalWrite(VIB_MOTOR_PIN, vibEngine.state ? HIGH : LOW);
-    vibEngine.stepTime = now;
-  }
-}
-
-// -------------------------------------------------------------
-// 3. FRAMED SERIAL COMMAND PARSER
-// -------------------------------------------------------------
-char serialRxBuf[96];
-uint8_t rxIndex = 0;
-
-void processFramedPacket(char* packet) {
-  // Expected: ~MSG|<ID>|<VIB>|<LINE1>|<LINE2>
-  if (strncmp(packet, "~MSG|", 5) != 0) return;
-
-  char* id = strtok(packet + 5, "|");
-  char* vib = strtok(NULL, "|");
-  char* l1 = strtok(NULL, "|");
-  char* l2 = strtok(NULL, "|");
-
-  if (!id || !vib) return;
-
-  // 1. Update 16x2 LCD
-  if (lcdOK) {
-    lcdWire.beginTransmission(0x27);
-    // Write Line 1 & Line 2 formatted to 16 cols
-    lcdPrint(0, l1 ? l1 : "");
-    lcdPrint(1, l2 ? l2 : "");
-  }
-
-  // 2. Trigger Haptic Motor
-  startVibrationPattern(vib);
-
-  // 3. Send physical Acknowledgment back to Web App
-  Serial.printf("ACK|%s\n", id);
-}
-
-// -------------------------------------------------------------
-// 4. INTEGRATE INTO handleSerial()
-// -------------------------------------------------------------
-void handleSerial() {
-  while (Serial.available()) {
-    char c = Serial.read();
-
-    if (c == '~' || rxIndex > 0) {
-      // Packet receiving mode
-      if (c == '\n' || c == '\r') {
-        serialRxBuf[rxIndex] = '\0';
-        if (rxIndex > 0) processFramedPacket(serialRxBuf);
-        rxIndex = 0;
-      } else if (rxIndex < sizeof(serialRxBuf) - 1) {
-        serialRxBuf[rxIndex++] = c;
-      }
-      continue;
-    }
-
-    // Existing single-character development commands
-    if (c >= '1' && c < '1' + NUM_GESTURES) {
-      trainGesture(c - '1');
-    } else if (c == 'c' || c == 'C') {
-      calibrateStraight();
-    } else if (c == 'p' || c == 'P') {
-      liveOutput = !liveOutput;
-      Serial.printf("Live readings: %s\n", liveOutput ? "ON" : "OFF");
-    } else if (c == 'X') {
-      // Erase training
-      memset(trainedMasks, 255, sizeof(trainedMasks));
-      saveTraining();
-    }
-  }
-}
-```
+The old proposed `~MSG` serial integration has been replaced by implemented
+HTTP replies. The old `X` single-character erase command is not present in the
+combined sketch; erase is available through the confirmed device-tools action.

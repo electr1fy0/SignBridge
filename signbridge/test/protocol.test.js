@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { formatLcd, vibFor, buildCommand, validateCommand, DEFAULT_TEMPLATE, makeAckId } from '../public/js/protocol.js';
+import { formatLcd, vibFor } from '../public/js/protocol.js';
 
 test('12. LCD: short text fits on two 16-char lines', () => {
   assert.deepEqual(formatLcd("I'll heat it for you."), { lines: ["I'LL HEAT IT FOR", 'YOU.'], truncated: false });
@@ -28,21 +28,4 @@ test('vibration mapping', () => {
   assert.equal(vibFor("I'll call a doctor."), 'URGENT');
   assert.equal(vibFor('Okay, got it.'), 'ACK');
   assert.equal(vibFor('Hello!'), 'MSG');
-});
-
-test('command builder: framed, validated, newline-terminated', () => {
-  const cmd = buildCommand(DEFAULT_TEMPLATE, { id: 'A1B2', vib: 'YES', lines: ['YES', ''] });
-  assert.equal(cmd, '~MSG|A1B2|YES|YES|\n');
-});
-
-test('command builder rejects anything that could reach the single-key command handler', () => {
-  assert.throws(() => buildCommand('MSG|{id}', { id: 'A1', vib: 'MSG', lines: ['', ''] }), /start with "~"/);
-  assert.throws(() => buildCommand(DEFAULT_TEMPLATE, { id: 'A1', vib: 'MSG', lines: ['HI\nX', ''] }), /Invalid line1/);
-  assert.throws(() => buildCommand(DEFAULT_TEMPLATE, { id: 'A1', vib: 'MSG', lines: ['A|B', ''] }), /Invalid line1/);
-  assert.throws(() => buildCommand('~{nope}', { id: 'A1', vib: 'MSG', lines: ['', ''] }), /placeholder/);
-  assert.equal(validateCommand('~OK'), null);
-});
-
-test('ack ids are 4 chars of [0-9A-Z]', () => {
-  for (let i = 0; i < 200; i++) assert.match(makeAckId(), /^[0-9A-Z]{4}$/);
 });

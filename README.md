@@ -1,139 +1,141 @@
-# SignBridge · Two-Way IoT Assistive Sign Language Communication System
+# SignBridge
 
-An accessible, real-time assistive communication platform bridging sign language glove users and verbal communication partners.
+A sign-language glove with a local Wi-Fi communication screen. One ESP32 sketch
+reads five flex sensors and an MPU6500, recognizes trained gestures, updates a
+16×2 LCD, and serves the website directly to a phone or computer. Replies from
+the website are written to the physical LCD, with optional vibration feedback.
 
-Combines ESP32 microcontroller firmware (flex sensors, 6-axis MPU6500 IMU, 16x2 I2C LCD, and haptic vibration feedback) with a zero-dependency Web Serial and Web Speech web application.
+## Flash this file
 
----
+**[firmware/SignBridge/SignBridge.ino](firmware/SignBridge/SignBridge.ino)**
 
-## 🌟 Architecture Overview
+That single file includes the website. No Node server, external Arduino libraries,
+filesystem upload, USB browser permissions, or internet connection is needed to
+use the glove after flashing.
 
-```
-                      ┌─────────────────────────────────────────┐
-                      │            ESP32 SMART GLOVE            │
-                      │  • 5x ADC Flex Sensors (Fingers)        │
-                      │  • 1x MPU6500 6-Axis IMU (Motion)       │
-                      │  • 1x 16x2 LCD (PCF8574 Backpack)       │
-                      │  • 1x Vibration Motor (Haptic Feedback) │
-                      └────────────────────┬────────────────────┘
-                                           │
-                                  USB Serial (115200)
-                                           │
-                      ┌────────────────────▼────────────────────┐
-                      │         SIGNBRIDGE WEB APPLICATION      │
-                      │  • Web Serial API (Direct ESP32 link)   │
-                      │  • Speech Synthesis (English Voice Out) │
-                      │  • Dual-Role Dashboards (Partner/Glove) │
-                      │  • Contextual 1-Click Quick Replies     │
-                      │  • Cross-Tab & Cross-Device LAN Sync    │
-                      └─────────────────────────────────────────┘
-```
+1. Install **esp32 by Espressif Systems**, version **3.x**, in Arduino IDE's Boards Manager.
+2. Open `firmware/SignBridge/SignBridge.ino` and select **ESP32 Dev Module** and your USB port.
+3. Keep **Erase All Flash Before Sketch Upload disabled** to retain saved training.
+4. Upload. Keep fingers straight and the hand flat and still during startup calibration.
+5. Join Wi-Fi **SignBridge**, password **signbridge**.
+6. Open **http://192.168.4.1** in a normal browser tab. If the phone warns that this Wi-Fi has no internet, stay connected.
+7. Tap **Enable voice** for spoken translations. Speech is produced by the phone/computer; offline speech depends on its installed voices.
 
----
+USB can be disconnected after upload when the ESP32 has another suitable power
+source. Up to four Wi-Fi devices can join the access point. The local page uses
+WebSockets for live data and HTTP commands for replies and controls.
 
-## 📁 Repository Structure
+## Wiring
 
-```
-├── glove_calibration.ino          # Sketch A: Difference-based 5-finger bend calibration & recognition
-├── motion_gestures.ino            # Sketch B: 3D motion-based gesture detection (MPU6500 IMU)
-├── signbridge/                    # Web Application
-│   ├── docs/
-│   │   └── FIRMWARE_PROTOCOL.md   # Firmware protocol & copy-paste ESP32 C++ additions
-│   ├── public/
-│   │   ├── css/index.css          # Design system, accessible high-contrast UI, LCD preview
-│   │   ├── js/
-│   │   │   ├── app.js             # Master controller & UI orchestration
-│   │   │   ├── comm.js            # BroadcastChannel + SSE cross-tab / LAN messaging
-│   │   │   ├── parser.js          # Streaming serial parser with noise delimiter isolation
-│   │   │   ├── phrases.js         # Contextual scenario library (Cafe, Travel, Hospital, etc.)
-│   │   │   ├── protocol.js        # 16x2 LCD word-wrapping & haptic pulse builder
-│   │   │   ├── serial.js          # Web Serial API manager (115200 baud)
-│   │   │   ├── signs.js           # Gesture dictionaries (Sketch A & B)
-│   │   │   └── tts.js             # Web Speech API controller
-│   │   └── index.html             # Accessible, semantic UI layout
-│   ├── test/
-│   │   ├── parser.test.js         # 14 unit tests for streaming serial parser
-│   │   └── protocol.test.js       # 4 unit tests for LCD formatter & protocol
-│   ├── package.json               # Zero external dependencies; Node test runner
-│   ├── server.js                  # Lightweight HTTP & SSE synchronization server (Port 3050)
-│   └── README.md                  # Web app specific documentation
-└── README.md                      # Project documentation
-```
+This pin map targets the **classic ESP32**, not C3/S2/S3 boards.
 
----
+| Component | ESP32 GPIO |
+|---|---|
+| Thumb flex divider output | 33 |
+| Index flex divider output | 35 |
+| **Middle flex divider output** | **36 — move it from the old GPIO25 connection** |
+| Ring flex divider output | 34 |
+| Pinky flex divider output | 32 |
+| MPU6500 SDA / SCL | 21 / 22 |
+| LCD backpack SDA / SCL | 18 / 19 |
+| Optional vibration motor driver control | 26 |
 
-## 🚀 Quick Start
+All flex inputs use ADC1 so Wi-Fi can run without the ADC2 conflict. Each flex
+sensor needs its own voltage divider with an output within the ESP32's 3.3 V
+input range. The thresholds assume bending increases ADC readings; change
+`bendDirection` in the sketch if your divider is reversed. Share grounds. Use
+3.3 V-compatible I²C signals or level shifting for an LCD backpack pulled to 5 V.
+Drive a motor through a suitable transistor/MOSFET driver and flyback diode.
 
-### 1. Requirements
-- **Node.js 18+**
-- **Google Chrome** or **Microsoft Edge** (for Web Serial USB hardware access)
-- **ESP32 Development Board** (connected via USB)
+The middle sensor is **ignored initially**, preserving the previous glove's
+workaround. It is still sampled and displayed. After repairing its wiring and
+moving it to GPIO36, uncheck **Ignore middle sensor** under Device tools.
+If using only the MPU, disable **Use flex sensors** there. Motor output starts
+disabled; enable it only when the driver is connected. Hardware settings persist.
 
-### 2. Run the Web App
-```bash
+## Recognition and training
+
+The two recognizers run together. A stable bent-finger pattern selects a finger
+sign; an open hand and a fast motion selects a motion sign. Return to a still,
+open hand between motions. The LCD continues showing an incoming reply for ten
+seconds so a new gesture does not immediately overwrite it.
+
+| Finger sign | Pattern: thumb, index, middle, ring, pinky |
+|---|---|
+| Okay | 11000 |
+| Water | 10001 |
+| Two | 10011 |
+| Three | 00011 |
+| Four | 10000 |
+| Seven | 10010 |
+
+Motion signs: **Hello, Bye, Thank you, Please, Happy, Come here, Slow down,
+Finished**. These are trained movement templates, not a general sign-language
+translator; similar movements can still be confused.
+
+Under **Device tools**, choose **Train** beside a sign. Finger training gives a
+three-second countdown, then checks the expected pattern for one second. Motion
+training gives a countdown and a **MOVE NOW** prompt; perform the movement once
+with fingers open. Repeat motion training three times per sign. Training and
+calibration are cancellable and do not block the website.
+
+New firmware imports saved finger patterns from `glove2` and motion examples
+from `motion2` on its first boot. It then uses its own `signbridge` preferences.
+Calibration runs at each startup; saved gesture examples survive restarts.
+
+## Serial Monitor
+
+Set **115200 baud** and **Newline** (or Both NL & CR). Send a command then Enter.
+Live readings start ON; motion debug starts OFF.
+
+| Command | Action |
+|---|---|
+| `p` | Toggle raw flex, delta, pattern, acceleration and gyro output |
+| `d` | Toggle motion matching scores; lower is closer, accepted at ≤0.65 |
+| `c` | Calibrate straight fingers and the still MPU |
+| `s` | List training and Wi-Fi information |
+| `f1` … `f6` | Train finger signs in the table's order |
+| `m1` … `m8` | Train motion signs in the order listed above |
+| `q` | Cancel calibration/training |
+| `reply Hello` | Write a reply to the physical LCD |
+| `?` | Print command help |
+
+The website has matching calibration, training, debug and serial-log controls.
+Wireless sensor values remain available when serial logging is paused. The
+conversation reports LCD delivery only after the firmware actually writes the
+reply; a missing LCD is reported as unavailable. Vibration acknowledgement means
+the configured driver was triggered, not that motor movement was measured.
+
+## Editing the website
+
+The maintained source is in `signbridge/public/`. To regenerate the copy embedded
+in the flashable `.ino` after editing it:
+
+```sh
 cd signbridge
-
-# Run automated test suite (18 unit tests)
+npm run embed
 npm test
-
-# Launch local server
-npm start
+npm run check:embed
 ```
-Open your browser at:
-👉 **`http://localhost:3050`**
 
----
+No npm dependencies are required. Optional desktop preview:
 
-## 🧤 Firmware Sketches
+```sh
+npm start
+# http://localhost:3050 — shows disconnected unless a real glove is proxied
+```
 
-### Sketch A — Finger-Based Gestures (`glove_calibration.ino`)
-- **Hardware:** 5 Flex Sensors (ADC) + MPU6500 (I2C0: GPIO 21/22) + 16x2 LCD (I2C1: GPIO 18/19).
-- **Detection:** Difference-based delta thresholding with per-sensor calibration and hysteresis.
-- **Signs:** `OKAY` (11000), `WATER` (10001), `TWO` (10011), `THREE` (00011), `FOUR` (10000), `SEVEN` (10010).
+For development with a glove connected over Wi-Fi:
 
-### Sketch B — Dynamic Motion Gestures (`motion_gestures.ino`)
-- **Hardware:** MPU6500 6-axis accelerometer & gyroscope on open flat hand.
-- **Detection:** Dynamic pitch/roll tilt, continuous shake/wave integration, and directional velocity matching.
-- **Signs:** `HELLO`, `BYE`, `THANK YOU`, `PLEASE`, `HAPPY`, `COME HERE`, `SLOW DOWN`, `FINISHED`.
+```sh
+SIGNBRIDGE_DEVICE=http://192.168.4.1 npm start
+```
 
----
+The preview proxies HTTP and WebSocket traffic to that device. Normal use should
+open the glove's own page. Optional existing Wi-Fi credentials can be set in
+`WIFI_SSID` / `WIFI_PASSWORD` near the top of the sketch; its access point remains
+available and the network IP appears in `/api/state` and the Serial Monitor.
 
-## 📡 Serial Protocol & Safety
-
-### Serial Monitor controls
-
-Open Serial Monitor at **115200 baud**. Both sketches now print sensor readings
-every 700 ms after startup calibration. Send `p` to pause or resume the stream.
-
-| Command | `glove_calibration.ino` | `motion_gestures.ino` |
-|---|---|---|
-| `p` | Toggle flex, delta, bend pattern, acceleration, and gyro readings | Toggle acceleration and gyro readings |
-| `d` | Not used | Toggle gesture match scores; lower means a closer match |
-| `s` | Show saved gesture training | Show saved gesture training |
-| `c` | Recalibrate straight fingers | Recalibrate the flat, still hand |
-
-Acceleration is printed in m/s² and gyro readings in degrees/second. Live
-readings start ON; motion match-score debug starts OFF. These toggles are
-independent and reset to their defaults after a restart. The web app's
-**Toggle Live Stream ('p')** button works with either updated sketch.
-
-Flash only one sketch at a time. In Arduino IDE, keep each `.ino` in its own
-same-named sketch folder so the two sketches are not compiled together.
-
-SignBridge parses streaming serial output with strict delimiter isolation:
-- **Recognition Event:** `>>> RECOGNIZED: SIGN_NAME <<<`
-  - Immediately translates to natural English.
-  - Automatically speaks aloud via Web Speech API.
-  - Generates contextual reply suggestions for the partner.
-- **Diagnostic Telemetry:** `FLEX (...)`, `ACC (...)`, `GYRO (...)`, `STATUS (...)`
-  - Live sensor stream is filtered into diagnostics and never triggers unwanted speech.
-- **Safe Outgoing Commands:** Outgoing replies from the web app use safe framing (`~MSG|...`) to never accidentally trigger ESP32 training (`'1'`–`'8'`) or flash erase (`'X'`).
-- See [signbridge/docs/FIRMWARE_PROTOCOL.md](signbridge/docs/FIRMWARE_PROTOCOL.md) for complete protocol specification and copy-paste ESP32 C++ handler code.
-
----
-
-## ♿ Accessibility & UX Highlights
-- Built according to WCAG 2.2 AA/AAA guidelines with Atkinson Hyperlegible typography.
-- Scalable SVG iconography and high contrast color palette.
-- Simulated 16x2 LCD dot-matrix preview and haptic vibration rhythm visualizer.
-- Zero external client runtime libraries.
+Legacy independent USB sketches are under `firmware/legacy/` for reference.
+Only `firmware/SignBridge/SignBridge.ino` is the maintained combined firmware.
+Protocol details: [signbridge/docs/FIRMWARE_PROTOCOL.md](signbridge/docs/FIRMWARE_PROTOCOL.md).

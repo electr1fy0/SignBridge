@@ -7,10 +7,12 @@ export class TextToSpeechManager {
   #muted = false;
   #lastSpokenText = '';
   #onStateChange = null;
+  #onError = null;
   #unlocked = false;
 
-  constructor({ onStateChange } = {}) {
+  constructor({ onStateChange, onError } = {}) {
     this.#onStateChange = onStateChange || (() => {});
+    this.#onError = onError || (() => {});
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       this.#synth = window.speechSynthesis;
       this.#muted = localStorage.getItem('signbridge_muted') === 'true';
@@ -44,9 +46,13 @@ export class TextToSpeechManager {
 
     // Preference: English natural voices, en-US / en-GB
     const englishVoices = voices.filter((v) => v.lang.startsWith('en'));
-    const preferred = englishVoices.find((v) =>
+    // The glove's access point has no internet. Prefer installed voices over
+    // network voices even when a remote voice sounds more natural.
+    const localVoices = englishVoices.filter((v) => v.localService);
+    const candidates = localVoices.length ? localVoices : englishVoices;
+    const preferred = candidates.find((v) =>
       /natural|google|samantha|karen|daniel|moira/i.test(v.name)
-    ) || englishVoices[0] || voices[0];
+    ) || candidates[0] || voices[0];
 
     this.#voice = preferred;
     this.#notifyState();
@@ -117,6 +123,7 @@ export class TextToSpeechManager {
         // SpeechSynthesis interrupted or cancelled is expected when new signs arrive
         if (err.error !== 'interrupted' && err.error !== 'canceled') {
           console.warn('[TTS] Speech error:', err);
+          this.#onError('Voice could not play. Check audio or install an offline English voice on this device.');
         }
       };
 
