@@ -8,12 +8,12 @@ const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
+let lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
-const BEND_ON = [150, 100, 100, 130, 110]; // matches firmware bendOn: a finger reads bent at this change
+const BEND_SCALE = 600; // change shown at the right end of each bend bar
 const SHAPE_NAMES = { FIST: 'Fist', POINT: 'Point', PINKY: 'Pinky up', ROCK: 'Index + pinky' };
 
 function feedback(text, error = false) {
@@ -23,7 +23,9 @@ function feedback(text, error = false) {
 function availability() {
   const busy = state?.job !== 0;
   $('send').disabled = !online;
-  $('calibrate').disabled = !online || busy;
+  $('calibrate').disabled = $('recalibrate').disabled = !online || busy;
+  $('save-bend').disabled = !online || !bendDirty;
+  $('reset-bend').disabled = !online;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
@@ -78,6 +80,10 @@ function renderEnvironment(envId) {
   for (const item of $('gesture-guide').children) item.querySelector('.meaning').textContent = env.phrases[item.dataset.gesture].text;
   if ([...$('scenario').options].some((option) => option.value === env.id)) { $('scenario').value = env.id; renderPhrases(); }
 }
+function bendLabel(element, change, trigger) {
+  const strong = document.createElement('strong'); strong.textContent = trigger;
+  element.replaceChildren(`${change} / `, strong);
+}
 // Same rule as the firmware's handShape(): only index, ring and pinky count.
 function handShape(pattern) {
   const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
@@ -89,7 +95,7 @@ function handShape(pattern) {
 }
 function renderHand() {
   const ready = state.useFlex && state.calibrated;
-  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / BEND_ON[i])) : 0);
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
     const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
     // An ignored middle finger copies its neighbours so a fist never shows it raised.
@@ -101,8 +107,16 @@ function renderHand() {
     chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
   }
   const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
   $('hand-shape').dataset.shape = String(Boolean(shape));
+  [...$('bend-rows').children].forEach((row, i) => {
+    const live = row.querySelector('.bend-live'), input = row.querySelector('input');
+    if (!bendDirty) input.value = state.bendOn[i];
+    live.style.width = `${Math.min(100, (state.delta[i] / BEND_SCALE) * 100)}%`;
+    live.dataset.bent = String(state.pattern[i] === '1');
+    row.dataset.ignored = String(i === 2 && state.ignoreMiddle);
+    bendLabel(row.querySelector('.bend-value'), state.delta[i], input.value);
+  });
   const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
   $('speed').textContent = state.mpu ? `${Math.round(speed)}°/s` : 'MPU unavailable';
   $('speed-fill').style.width = `${Math.min(100, speed / 3)}%`;
@@ -244,7 +258,16 @@ function init() {
     button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
-  for (const name of fingerNames) { const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip); }
+  for (const name of fingerNames) {
+    const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip);
+    const row = document.createElement('li'), label = document.createElement('span'), track = document.createElement('div');
+    const live = document.createElement('span'), input = document.createElement('input'), value = document.createElement('span');
+    label.textContent = name; track.className = 'bend-track'; live.className = 'bend-live'; value.className = 'bend-value';
+    Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
+    input.setAttribute('aria-label', `${name} bend trigger`);
+    input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
+    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
+  }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;
@@ -258,7 +281,15 @@ function init() {
   $('reconnect').onclick = reconnect;
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
-  $('calibrate').onclick = () => run('calibrate'); $('cancel').onclick = () => run('cancel');
+  $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('save-bend').onclick = async () => {
+    try { await command('bend', { values: [...$('bend-rows').querySelectorAll('input')].map((input) => Number(input.value)) }); bendDirty = false; availability(); }
+    catch (error) { feedback(error.message, true); }
+  };
+  $('reset-bend').onclick = async () => {
+    try { await command('bend', { reset: true }); bendDirty = false; availability(); }
+    catch (error) { feedback(error.message, true); }
+  }; $('cancel').onclick = () => run('cancel');
   $('live').onclick = () => run('live', { value: !state.live });
   $('debug').onclick = () => run('debug', { value: !state.debug });
   $('settings').oninput = () => { settingsDirty = true; };

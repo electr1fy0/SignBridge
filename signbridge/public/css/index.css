@@ -100,6 +100,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); }
 #motion-summary { margin-top: 10px; }
 
+.hand-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--separator); }
+
 /* Reply */
 .chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
 .chips-row button { font-size: 15px; background: var(--accent-tint); color: var(--accent); }
@@ -150,6 +152,24 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .sensors { border-collapse: collapse; width: 100%; max-width: 680px; font-size: 14px; font-variant-numeric: tabular-nums; }
 .sensors caption { text-align: left; font-weight: 600; margin-bottom: 6px; }
 .sensors caption span { margin-left: 10px; color: var(--accent); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+/* Bend triggers: a range input layered over the live bend bar */
+.bend-panel { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--separator); }
+.bend-panel h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.bend-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
+.bend-rows li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 92px; align-items: center; gap: 14px; padding: 6px 0; font-size: 15px; }
+.bend-rows li[data-ignored="true"] { opacity: .45; }
+.bend-track { position: relative; height: 30px; }
+.bend-track::before, .bend-live { content: ""; position: absolute; left: 0; top: 11px; height: 8px; border-radius: 999px; }
+.bend-track::before { right: 0; background: var(--fill); }
+.bend-live { width: 0; background: var(--hand); transition: width .3s ease-out, background .2s; }
+.bend-live[data-bent="true"] { background: var(--accent); }
+.bend-track input { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.bend-track input::-webkit-slider-runnable-track { background: transparent; height: 30px; }
+.bend-track input::-moz-range-track { background: transparent; }
+.bend-track input::-webkit-slider-thumb { -webkit-appearance: none; width: 6px; height: 26px; margin-top: 2px; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 2px var(--card); }
+.bend-track input::-moz-range-thumb { width: 6px; height: 26px; border: 0; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 2px var(--card); }
+.bend-value { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--secondary); text-align: right; }
+.bend-value strong { color: var(--text); font-weight: 600; }
 th, td { text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--separator); }
 th { color: var(--secondary); font-weight: 500; }
 .settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--separator); }
@@ -169,6 +189,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
   .hero { min-height: 240px; }
   .phrase { margin: 22px 0; }
   .phrase-filters { grid-template-columns: 1fr; }
+  .bend-rows li { grid-template-columns: 52px minmax(0, 1fr) 76px; gap: 10px; }
   .tools { padding: 4px 20px; }
   footer { padding: 0 16px 24px; }
 }

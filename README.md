@@ -78,9 +78,14 @@ the LCD and website show the phrase.
   MPU is mounted: *shake* is hard and repeated, *flip* ends with the hand turned
   over, *wave* goes back and forth at least twice, *nod* goes out and back once.
   Start from a still hand and pause about a second between motions.
-- Thresholds are constants near the top of the `sb` namespace in the sketch
-  (`HOLD_MS`, `MOVE_START`, `FLIP_TILT`, `SHAKE_ENERGY`, …). The website's
-  Device tools show the last motion's swings, turn, tilt change and energy.
+- **Calibration** runs at every startup and records the straight-hand flex
+  readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
+  card, or `c` over serial) after putting the glove on again.
+- **Bend triggers** are set per finger under Device tools → Bend triggers: each
+  finger's live bend is shown against a draggable trigger. They are saved on the
+  glove. Motion thresholds are constants near the top of the `sb` namespace
+  (`HOLD_MS`, `MOVE_START`, `FLIP_TILT`, `SHAKE_ENERGY`, …); Device tools show the
+  last motion's swings, turn, tilt change and energy.
 
 Phrases are edited in `signbridge/public/js/gestures.js`; `npm run embed`
 regenerates the firmware's LCD table from it. The environment persists across restarts.

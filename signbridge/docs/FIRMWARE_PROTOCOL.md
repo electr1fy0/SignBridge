@@ -26,7 +26,7 @@ is no internet-facing service or external font/CDN dependency.
 Snapshots include `type: "state"`, a per-boot `boot` identifier, `uptime`, device
 health, calibration progress, `notice`, raw flex/delta/baseline arrays,
 acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
-the current `env` id, hardware settings, the most recent 12 conversation events,
+the current `env` id, the five per-finger bend triggers `bendOn`, hardware settings, the most recent 12 conversation events,
 and `motion` (`swings`, `turn`, `tilt`, `energy`, `result`) for the last
 analysed movement.
 
@@ -57,13 +57,17 @@ Other commands:
 {"op":"calibrate"}
 {"op":"cancel"}
 {"op":"env","value":"hospital"}
+{"op":"bend","values":[150,100,100,130,110]}
+{"op":"bend","reset":true}
 {"op":"live","value":false}
 {"op":"debug","value":true}
 {"op":"settings","useFlex":true,"ignoreMiddle":false,"useMotor":false}
 ```
 
 Environment ids are `everyday`, `hospital`, `market`, `restaurant` and
-`classroom`. Booleans and ids are validated, and settings changes are refused
+`classroom`. Bend trigger values are whole numbers from 20 to 1000, in thumb,
+index, middle, ring, pinky order; a finger reads straight again below two thirds
+of its trigger. Triggers persist. Booleans and ids are validated, and settings changes are refused
 while calibration is running. HTTP 202 means queued; subsequent state
 and reply events report execution. Queue overflow returns 503.
 

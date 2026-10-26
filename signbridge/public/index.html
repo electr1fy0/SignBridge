@@ -43,6 +43,7 @@
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
           <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
         </div>
+        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
       </section>
 
       <section class="card reply" aria-labelledby="reply-heading">
@@ -74,7 +75,13 @@
       <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="secondary small">To calibrate, straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <section class="bend-panel" aria-labelledby="bend-heading">
+        <h3 id="bend-heading">Bend triggers</h3>
+        <p class="secondary small">The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
+        <ul id="bend-rows" class="bend-rows"></ul>
+        <div class="tools-actions"><button id="save-bend" class="primary" type="button" disabled>Save triggers</button><button id="reset-bend" type="button" disabled>Reset to defaults</button></div>
+      </section>
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>

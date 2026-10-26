@@ -150,6 +150,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); }
 #motion-summary { margin-top: 10px; }
 
+.hand-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--separator); }
+
 /* Reply */
 .chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
 .chips-row button { font-size: 15px; background: var(--accent-tint); color: var(--accent); }
@@ -200,6 +202,24 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .sensors { border-collapse: collapse; width: 100%; max-width: 680px; font-size: 14px; font-variant-numeric: tabular-nums; }
 .sensors caption { text-align: left; font-weight: 600; margin-bottom: 6px; }
 .sensors caption span { margin-left: 10px; color: var(--accent); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+/* Bend triggers: a range input layered over the live bend bar */
+.bend-panel { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--separator); }
+.bend-panel h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
+.bend-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
+.bend-rows li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 92px; align-items: center; gap: 14px; padding: 6px 0; font-size: 15px; }
+.bend-rows li[data-ignored="true"] { opacity: .45; }
+.bend-track { position: relative; height: 30px; }
+.bend-track::before, .bend-live { content: ""; position: absolute; left: 0; top: 11px; height: 8px; border-radius: 999px; }
+.bend-track::before { right: 0; background: var(--fill); }
+.bend-live { width: 0; background: var(--hand); transition: width .3s ease-out, background .2s; }
+.bend-live[data-bent="true"] { background: var(--accent); }
+.bend-track input { position: absolute; inset: 0; width: 100%; margin: 0; background: transparent; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.bend-track input::-webkit-slider-runnable-track { background: transparent; height: 30px; }
+.bend-track input::-moz-range-track { background: transparent; }
+.bend-track input::-webkit-slider-thumb { -webkit-appearance: none; width: 6px; height: 26px; margin-top: 2px; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 2px var(--card); }
+.bend-track input::-moz-range-thumb { width: 6px; height: 26px; border: 0; border-radius: 3px; background: var(--text); box-shadow: 0 0 0 2px var(--card); }
+.bend-value { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--secondary); text-align: right; }
+.bend-value strong { color: var(--text); font-weight: 600; }
 th, td { text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--separator); }
 th { color: var(--secondary); font-weight: 500; }
 .settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--separator); }
@@ -219,6 +239,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
   .hero { min-height: 240px; }
   .phrase { margin: 22px 0; }
   .phrase-filters { grid-template-columns: 1fr; }
+  .bend-rows li { grid-template-columns: 52px minmax(0, 1fr) 76px; gap: 10px; }
   .tools { padding: 4px 20px; }
   footer { padding: 0 16px 24px; }
 }
@@ -260,6 +281,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
           <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
         </div>
+        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
       </section>
 
       <section class="card reply" aria-labelledby="reply-heading">
@@ -291,7 +313,13 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="secondary small">To calibrate, straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <section class="bend-panel" aria-labelledby="bend-heading">
+        <h3 id="bend-heading">Bend triggers</h3>
+        <p class="secondary small">The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
+        <ul id="bend-rows" class="bend-rows"></ul>
+        <div class="tools-actions"><button id="save-bend" class="primary" type="button" disabled>Save triggers</button><button id="reset-bend" type="button" disabled>Reset to defaults</button></div>
+      </section>
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
@@ -754,7 +782,7 @@ class TextToSpeechManager {
 // State validation and replay handling shared by the live UI and tests.
 function validateState(state) {
   if (!state || state.type !== 'state' || typeof state.boot !== 'string' || !Number.isFinite(state.uptime)) throw new Error('This address is not running SignBridge firmware.');
-  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3]]) {
+  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5]]) {
     if (!Array.isArray(state[key]) || state[key].length !== length) throw new Error(`Incomplete device data: ${key}`);
   }
   if (typeof state.env !== 'string') throw new Error('Incomplete device data: env');
@@ -780,12 +808,12 @@ const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
+let lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
-const BEND_ON = [150, 100, 100, 130, 110]; // matches firmware bendOn: a finger reads bent at this change
+const BEND_SCALE = 600; // change shown at the right end of each bend bar
 const SHAPE_NAMES = { FIST: 'Fist', POINT: 'Point', PINKY: 'Pinky up', ROCK: 'Index + pinky' };
 
 function feedback(text, error = false) {
@@ -795,7 +823,9 @@ function feedback(text, error = false) {
 function availability() {
   const busy = state?.job !== 0;
   $('send').disabled = !online;
-  $('calibrate').disabled = !online || busy;
+  $('calibrate').disabled = $('recalibrate').disabled = !online || busy;
+  $('save-bend').disabled = !online || !bendDirty;
+  $('reset-bend').disabled = !online;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
@@ -850,6 +880,10 @@ function renderEnvironment(envId) {
   for (const item of $('gesture-guide').children) item.querySelector('.meaning').textContent = env.phrases[item.dataset.gesture].text;
   if ([...$('scenario').options].some((option) => option.value === env.id)) { $('scenario').value = env.id; renderPhrases(); }
 }
+function bendLabel(element, change, trigger) {
+  const strong = document.createElement('strong'); strong.textContent = trigger;
+  element.replaceChildren(`${change} / `, strong);
+}
 // Same rule as the firmware's handShape(): only index, ring and pinky count.
 function handShape(pattern) {
   const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
@@ -861,7 +895,7 @@ function handShape(pattern) {
 }
 function renderHand() {
   const ready = state.useFlex && state.calibrated;
-  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / BEND_ON[i])) : 0);
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
     const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
     // An ignored middle finger copies its neighbours so a fist never shows it raised.
@@ -873,8 +907,16 @@ function renderHand() {
     chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
   }
   const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
   $('hand-shape').dataset.shape = String(Boolean(shape));
+  [...$('bend-rows').children].forEach((row, i) => {
+    const live = row.querySelector('.bend-live'), input = row.querySelector('input');
+    if (!bendDirty) input.value = state.bendOn[i];
+    live.style.width = `${Math.min(100, (state.delta[i] / BEND_SCALE) * 100)}%`;
+    live.dataset.bent = String(state.pattern[i] === '1');
+    row.dataset.ignored = String(i === 2 && state.ignoreMiddle);
+    bendLabel(row.querySelector('.bend-value'), state.delta[i], input.value);
+  });
   const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
   $('speed').textContent = state.mpu ? `${Math.round(speed)}°/s` : 'MPU unavailable';
   $('speed-fill').style.width = `${Math.min(100, speed / 3)}%`;
@@ -1016,7 +1058,16 @@ function init() {
     button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
-  for (const name of fingerNames) { const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip); }
+  for (const name of fingerNames) {
+    const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip);
+    const row = document.createElement('li'), label = document.createElement('span'), track = document.createElement('div');
+    const live = document.createElement('span'), input = document.createElement('input'), value = document.createElement('span');
+    label.textContent = name; track.className = 'bend-track'; live.className = 'bend-live'; value.className = 'bend-value';
+    Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
+    input.setAttribute('aria-label', `${name} bend trigger`);
+    input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
+    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
+  }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;
@@ -1030,7 +1081,15 @@ function init() {
   $('reconnect').onclick = reconnect;
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
-  $('calibrate').onclick = () => run('calibrate'); $('cancel').onclick = () => run('cancel');
+  $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('save-bend').onclick = async () => {
+    try { await command('bend', { values: [...$('bend-rows').querySelectorAll('input')].map((input) => Number(input.value)) }); bendDirty = false; availability(); }
+    catch (error) { feedback(error.message, true); }
+  };
+  $('reset-bend').onclick = async () => {
+    try { await command('bend', { reset: true }); bendDirty = false; availability(); }
+    catch (error) { feedback(error.message, true); }
+  }; $('cancel').onclick = () => run('cancel');
   $('live').onclick = () => run('live', { value: !state.live });
   $('debug').onclick = () => run('debug', { value: !state.debug });
   $('settings').oninput = () => { settingsDirty = true; };
@@ -1082,8 +1141,11 @@ const char* phraseLcd[ENV_N][GESTURE_N][2] = {
 // END GENERATED GESTURES
 constexpr int WINDOW = 75, PRE = 10, SAMPLE_MS = 20, FLEX_SAMPLE_MS = 100;
 constexpr int flexPins[5] = {33, 35, 36, 34, 32};
-constexpr int bendOn[5] = {150, 100, 100, 130, 110};
-constexpr int bendOff[5] = {100, 65, 65, 85, 70};
+// Per-finger change from the calibrated reading that counts as bent. Adjustable
+// from the website and saved; a finger reads straight again below two thirds of it.
+constexpr int DEFAULT_BEND_ON[5] = {150, 100, 100, 130, 110};
+constexpr int BEND_MIN = 20, BEND_MAX = 1000;
+int bendOn[5] = {150, 100, 100, 130, 110};
 constexpr int F_INDEX = 1, F_RING = 3, F_PINKY = 4;
 // Deliberately loose thresholds (degrees, degrees/second, milliseconds) so demo gestures trigger easily.
 constexpr float MOVE_START = 90, REST_SPEED = 35, STILL_SPEED = 80, SWING_SPEED = 60;
@@ -1137,7 +1199,8 @@ int historyNext = 0, historyCount = 0;
 struct Command {
   char op[20], id[40], text[161], lines[2][17], vib[9];
   int index;
-  bool value, flex, middle, motor;
+  bool value, flex, middle, motor, reset;
+  int bend[5];
 };
 enum class Job { Idle, CalPrep, CalSample };
 Job job = Job::Idle;
@@ -1202,7 +1265,7 @@ void readFlex() {
     filtered[i] = 0.75f * filtered[i] + 0.25f * raw[i];
     delta[i] = abs(int(filtered[i] - baseline[i]));
     if (!bent[i] && delta[i] >= bendOn[i]) bent[i] = true;
-    else if (bent[i] && delta[i] <= bendOff[i]) bent[i] = false;
+    else if (bent[i] && delta[i] <= bendOn[i] * 2 / 3) bent[i] = false;
     if (ignoreMiddle && i == 2) bent[i] = false;
     if (bent[i]) mask |= 1 << i;
   }
@@ -1325,6 +1388,10 @@ void resetRecognition() {
 void loadSettings() {
   useFlex = prefs.getBool("useFlex", true); ignoreMiddle = prefs.getBool("ignoreMiddle", true); useMotor = prefs.getBool("useMotor", false);
   env = prefs.getUChar("env", 0);
+  int saved[5];
+  bool valid = prefs.getBytesLength("bendOn") == sizeof(saved) && prefs.getBytes("bendOn", saved, sizeof(saved)) == sizeof(saved);
+  for (int i = 0; valid && i < 5; ++i) valid = saved[i] >= BEND_MIN && saved[i] <= BEND_MAX;
+  memcpy(bendOn, valid ? saved : DEFAULT_BEND_ON, sizeof(bendOn));
   if (env >= ENV_N) env = 0;
 }
 void setEnvironment(int index) {
@@ -1474,6 +1541,10 @@ void execute(const Command& c) {
     prefs.putBool("useFlex", useFlex); prefs.putBool("ignoreMiddle", ignoreMiddle); prefs.putBool("useMotor", useMotor);
     if (!useMotor) { vibration.active = false; digitalWrite(MOTOR_PIN, LOW); }
     resetRecognition(); setNotice("Sensor settings saved.");
+  } else if (!strcmp(c.op, "bend")) {
+    memcpy(bendOn, c.reset ? DEFAULT_BEND_ON : c.bend, sizeof(bendOn));
+    prefs.putBytes("bendOn", bendOn, sizeof(bendOn));
+    setNotice(c.reset ? "Bend triggers reset to defaults." : "Bend triggers saved.");
   } else if (!strcmp(c.op, "status")) printStatus();
 }
 void serialInput() {
@@ -1520,6 +1591,7 @@ void publishState() {
   jsonBool(root,"calibrated",flexReady); jsonBool(root,"imuCalibrated",imuReady);
   jsonBool(root,"live",liveOutput); jsonBool(root,"debug",debugOn);
   jsonBool(root,"useFlex",useFlex); jsonBool(root,"ignoreMiddle",ignoreMiddle); jsonBool(root,"useMotor",useMotor);
+  addInts(root,"bendOn",bendOn,5);
   cJSON_AddStringToObject(root,"env",envIds[env]);
   cJSON_AddStringToObject(root,"ip",WiFi.softAPIP().toString().c_str());
   cJSON_AddStringToObject(root,"stationIp",WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
@@ -1601,6 +1673,17 @@ esp_err_t commandHandler(httpd_req_t* req) {
     const char* a=jsonString(root,"line1"), *b=jsonString(root,"line2");
     valid &= printable(a,16) && printable(b,16);
     strlcpy(c.text,text,sizeof(c.text)); strlcpy(c.vib,vib,sizeof(c.vib)); strlcpy(c.lines[0],a,17); strlcpy(c.lines[1],b,17);
+  } else if(!strcmp(op,"bend")) {
+    cJSON* reset=cJSON_GetObjectItemCaseSensitive(root,"reset"), *values=cJSON_GetObjectItemCaseSensitive(root,"values");
+    c.reset=cJSON_IsTrue(reset);
+    if(!c.reset) {
+      valid &= cJSON_IsArray(values) && cJSON_GetArraySize(values)==5;
+      for(int i=0;valid && i<5;++i) {
+        cJSON* v=cJSON_GetArrayItem(values,i);
+        valid &= cJSON_IsNumber(v) && v->valuedouble==v->valueint && v->valueint>=BEND_MIN && v->valueint<=BEND_MAX;
+        if(valid) c.bend[i]=v->valueint;
+      }
+    }
   } else if(!strcmp(op,"env")) {
     const char* id=jsonString(root,"value"); c.index=-1;
     for(int e=0;e<ENV_N;++e) if(!strcmp(id,envIds[e])) c.index=e;
