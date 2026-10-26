@@ -45,63 +45,260 @@ const char WEB_PAGE[] PROGMEM = R"SBWEB(<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f5f7fa">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <title>SignBridge</title>
-  <style>:root{color-scheme:light;--page:#f5f7fa;--paper:#fff;--ink:#1b2836;--muted:#526476;--line:#d7dfe7;--blue:#275b7b;--tint:#edf4f9;--danger:#a12833;font-family:"Segoe UI",Arial,sans-serif;font-size:16px;line-height:1.5;color:var(--ink);background:var(--page)}
-*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button,a,input,textarea,select,summary{-webkit-tap-highlight-color:transparent}button{min-height:42px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);cursor:pointer}button:hover:enabled{border-color:var(--blue);background:var(--tint)}button:disabled{opacity:.5;cursor:default}button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #4484b5;outline-offset:3px}a{color:var(--blue)}.primary{background:var(--blue);color:#fff;border-color:var(--blue)}.primary:hover:enabled{background:#194360;color:#fff}.quiet{border-color:transparent;background:transparent;font-size:.875rem;padding:6px 9px}.danger{color:var(--danger);border-color:var(--danger)}[hidden]{display:none!important}h1,h2,h3,p{margin:0}h1,h2{font-size:1.05rem;font-weight:600}h3{font-size:1rem;font-weight:600}.topbar{max-width:1200px;margin:auto;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px}.brand{font-size:1.35rem;font-weight:700;letter-spacing:-.045em;color:var(--ink);text-decoration:none}.connection{display:flex;align-items:center;gap:8px;font-size:.875rem;color:var(--muted)}.connection [data-online="true"]{color:#235b43}.connection [data-online="false"]{color:var(--danger)}main{max-width:1200px;margin:0 auto;padding:8px 28px 32px}.connection-help{padding:14px 18px;background:#fff3df;border-radius:6px;margin-bottom:20px;max-width:80ch}.workspace{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(260px,1fr);gap:36px}.communication{background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow:hidden}.translation{padding:26px 28px 20px;min-height:250px;display:flex;flex-direction:column;justify-content:space-between}.section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}.sign{font-size:clamp(2.2rem,5.4vw,4.5rem);font-weight:600;letter-spacing:-.045em;line-height:1.12;overflow-wrap:anywhere;margin:28px 0;max-width:20ch}.translation-foot,.reply-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:.8rem;color:var(--muted)}.reply-section{border-top:1px solid var(--line);padding:24px 28px}.quick-replies{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 20px}.quick-replies button{text-align:left;font-size:.875rem;background:var(--tint);border-color:transparent}label{display:block;font-size:.875rem}textarea,input[type="search"],select{width:100%;border:1px solid #aebdca;border-radius:6px;background:var(--paper);padding:10px;color:var(--ink)}textarea{display:block;resize:vertical;margin:7px 0 12px;min-height:88px}.reply-foot>span{max-width:36ch;white-space:pre-line}.feedback{font-size:.875rem;min-height:1.5em;margin-top:14px}.feedback[data-error="true"]{color:var(--danger)}summary{cursor:pointer;min-height:44px;padding:10px 0;font-weight:600}summary::marker{color:var(--muted)}.phrases{margin-top:16px;border-top:1px solid var(--line);padding-top:8px}.phrase-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:10px 0}.phrase-filters input,.phrase-filters select{margin-top:5px}.conversation{padding-top:15px;min-width:0}.muted,.hint{color:var(--muted);font-size:.875rem}.conversation>.muted{margin-top:28px;max-width:30ch}.history{list-style:none;margin:16px 0 0;padding:0;max-height:640px;overflow:auto}.history li{padding:14px 0;border-bottom:1px solid var(--line);overflow-wrap:anywhere}.history .who{font-size:.75rem;color:var(--muted);margin-bottom:4px}.history .message{font-size:1rem}.history .delivery{font-size:.75rem;color:var(--muted);margin-top:5px}.history li[data-type="reply"] .message{color:var(--blue)}.device-tools{margin-top:32px;border-top:1px solid var(--line);padding-top:8px}.device-tools>summary{display:list-item;font-size:1rem}.device-tools>summary span{font-weight:400;color:var(--muted);font-size:.8rem;margin-left:16px}.notice{padding:12px 16px;margin:14px 0;background:var(--tint);border-radius:6px;max-width:85ch}.tools-actions{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 10px}.hint{max-width:80ch;margin:8px 0 14px}.sensor-scroll{overflow-x:auto;margin:22px 0 12px}.sensors{border-collapse:collapse;width:100%;max-width:720px;font-size:.875rem;font-variant-numeric:tabular-nums}.sensors caption{text-align:left;font-weight:600;margin-bottom:8px}.sensors caption span{margin-left:12px;font-variant-numeric:tabular-nums;color:var(--blue)}th,td{text-align:left;padding:9px 14px 9px 0;border-bottom:1px solid var(--line)}th{color:var(--muted);font-weight:500}.measurements{font-size:.875rem;white-space:pre-line;font-variant-numeric:tabular-nums}#motion-values{margin-top:12px}.settings{border-top:1px solid var(--line);padding-top:22px}.settings label{display:flex;align-items:flex-start;gap:9px;margin:12px 0;max-width:70ch}.settings input{margin-top:4px;accent-color:var(--blue);width:17px;height:17px}.settings button{margin:0 0 20px}.environments{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}.environments button{font-size:.875rem;min-height:36px;padding:6px 12px;border-radius:999px}.environments button[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}.sign[data-urgent="true"]{color:var(--danger)}.guide{margin-top:32px}.gesture-guide{list-style:none;padding:0;margin:14px 0 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}.gesture-guide li{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;transition:border-color .2s,background .2s}.gesture-guide li[data-active="true"]{border-color:var(--blue);background:var(--tint)}.gesture-guide .name{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}.gesture-guide li[data-kind="motion"] .name::after{content:" · motion"}.gesture-guide .meaning{font-weight:600}.gesture-guide small{color:var(--muted);font-size:.8rem}footer{max-width:1200px;margin:0 auto;padding:0 28px 24px;color:var(--muted);font-size:.75rem}
-@media(max-width:760px){.topbar{padding:18px 18px}.connection{gap:2px;font-size:.75rem}.connection .quiet{font-size:.75rem;padding:4px}main{padding:0 18px 24px}.workspace{grid-template-columns:1fr;gap:22px}.translation,.reply-section{padding:22px}.translation{min-height:230px}.conversation{padding:0 4px}.history{max-height:360px}.device-tools>summary span{display:block;margin-left:18px}.phrase-filters{grid-template-columns:1fr}footer{padding-left:18px}.sign{font-size:3rem}}
+  <style>:root {
+  color-scheme: light dark;
+  --bg: #f5f5f7; --card: #fff; --fill: #e8e8ed; --fill-2: #f2f2f5;
+  --text: #1d1d1f; --secondary: #6e6e73; --separator: rgba(0,0,0,.08);
+  --accent: #0071e3; --accent-hover: #0077ed; --accent-tint: rgba(0,113,227,.1);
+  --red: #e30000; --green: #1f9e47; --hand: #d2d2d7; --palm: #e3e3e8;
+  --shadow: 0 1px 2px rgba(0,0,0,.04), 0 6px 24px rgba(0,0,0,.05);
+  --radius: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 17px; line-height: 1.47; letter-spacing: -.01em;
+  color: var(--text); background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000; --card: #1c1c1e; --fill: #2c2c2e; --fill-2: #232325;
+    --text: #f5f5f7; --secondary: #98989d; --separator: rgba(255,255,255,.1);
+    --accent: #2997ff; --accent-hover: #47a6ff; --accent-tint: rgba(41,151,255,.16);
+    --red: #ff453a; --green: #32d74b; --hand: #48484a; --palm: #3a3a3c;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+h1, h2, h3, p { margin: 0; }
+button, input, textarea, select { font: inherit; letter-spacing: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+[hidden] { display: none !important; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.secondary { color: var(--secondary); }
+.small { font-size: 14px; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; white-space: pre-line; font-variant-numeric: tabular-nums; margin-top: 10px; }
+
+/* Buttons */
+button { min-height: 36px; padding: 7px 16px; border: 0; border-radius: 999px; background: var(--fill); cursor: pointer; transition: background .15s, transform .1s, opacity .15s; }
+button:hover:enabled { background: var(--fill-2); filter: brightness(.97); }
+button:active:enabled { transform: scale(.97); }
+button:disabled { opacity: .4; cursor: default; }
+.primary { background: var(--accent); color: #fff; font-weight: 500; padding: 8px 22px; }
+.primary:hover:enabled { background: var(--accent-hover); filter: none; }
+.link { background: none; color: var(--accent); padding: 4px 6px; min-height: 0; font-size: 15px; }
+.link:hover:enabled { background: none; text-decoration: underline; filter: none; }
+.pill { min-height: 30px; padding: 4px 14px; font-size: 14px; font-weight: 500; }
+.pill[aria-pressed="true"] { background: var(--accent-tint); color: var(--accent); }
+
+/* Top bar */
+.topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px max(24px, calc((100vw - 1180px) / 2)); background: color-mix(in srgb, var(--bg) 78%, transparent); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid var(--separator); }
+.brand { font-size: 21px; font-weight: 600; letter-spacing: -.02em; color: var(--text); }
+.brand:hover { text-decoration: none; }
+.connection { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.status { display: inline-flex; align-items: center; gap: 7px; color: var(--secondary); }
+.status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--secondary); }
+.status[data-online="true"]::before { background: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 22%, transparent); }
+.status[data-online="false"]::before { background: var(--red); }
+
+main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
+.banner { padding: 12px 16px; margin-bottom: 18px; border-radius: 14px; background: var(--accent-tint); font-size: 15px; }
+
+/* Environment segmented control */
+.env-bar { display: flex; justify-content: center; margin: 4px 0 24px; }
+.segmented { display: inline-flex; gap: 2px; padding: 3px; border-radius: 12px; background: var(--fill); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.segmented::-webkit-scrollbar { display: none; }
+.segmented button { min-height: 34px; padding: 6px 18px; border-radius: 9px; background: transparent; font-size: 15px; font-weight: 500; white-space: nowrap; color: var(--text); }
+.segmented button:hover { filter: none; background: color-mix(in srgb, var(--card) 50%, transparent); }
+.segmented button[aria-checked="true"] { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,.12), 0 1px 1px rgba(0,0,0,.04); }
+
+/* Cards and layout */
+.layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 1fr); grid-template-areas: "hero hand" "reply conversation"; gap: 20px; }
+.card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }
+.hero { grid-area: hero; min-height: 340px; display: flex; flex-direction: column; justify-content: space-between; }
+.hand-card { grid-area: hand; }
+.reply { grid-area: reply; }
+.conversation { grid-area: conversation; }
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; color: var(--secondary); }
+.phrase { font-size: clamp(36px, 5.6vw, 64px); font-weight: 600; letter-spacing: -.035em; line-height: 1.06; margin: 32px 0; max-width: 16ch; overflow-wrap: anywhere; }
+.phrase[data-urgent="true"] { color: var(--red); }
+.hero-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; font-size: 15px; }
+.tag { font-size: 13px; font-weight: 600; padding: 4px 11px; border-radius: 999px; background: var(--fill); color: var(--secondary); }
+.tag[data-shape="true"] { background: var(--accent-tint); color: var(--accent); }
+
+/* Live hand */
+.hand { display: block; width: 100%; max-width: 210px; height: auto; margin: 12px auto 4px; }
+.hand .palm { fill: var(--palm); }
+.hand .finger { fill: var(--hand); transform-box: fill-box; transform-origin: 50% 100%; transition: transform .25s cubic-bezier(.3,.7,.4,1), fill .2s; }
+.hand .finger[data-bent="true"] { fill: var(--accent); }
+.hand .finger[data-ignored="true"] { opacity: .45; }
+.chips { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; padding: 0; margin: 8px 0 18px; }
+.chips li { font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 999px; background: var(--fill); color: var(--secondary); transition: background .2s, color .2s; }
+.chips li[data-bent="true"] { background: var(--accent); color: #fff; }
+.chips li[data-ignored="true"] { opacity: .45; text-decoration: line-through; }
+.meter { border-top: 1px solid var(--separator); padding-top: 14px; }
+.meter-head { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 8px; }
+.value { font-variant-numeric: tabular-nums; font-weight: 500; }
+.track { position: relative; height: 8px; border-radius: 999px; background: var(--fill); overflow: hidden; }
+.fill { height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .3s ease-out; }
+.fill[data-moving="true"] { background: #ff9f0a; }
+.mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); }
+#motion-summary { margin-top: 10px; }
+
+/* Reply */
+.chips-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 16px; }
+.chips-row button { font-size: 15px; background: var(--accent-tint); color: var(--accent); }
+.chips-row button:hover:enabled { filter: brightness(.95); }
+.composer { border-radius: 14px; background: var(--fill-2); padding: 4px 4px 10px 4px; }
+textarea { display: block; width: 100%; min-height: 70px; resize: vertical; border: 0; background: transparent; padding: 10px 12px; outline: none; }
+.composer:focus-within { box-shadow: 0 0 0 3px var(--accent-tint); }
+.composer-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 6px 0 12px; }
+.feedback { min-height: 1.4em; margin-top: 10px; color: var(--secondary); }
+.feedback[data-error="true"] { color: var(--red); }
+.disclosure { margin-top: 8px; border-top: 1px solid var(--separator); }
+summary { cursor: pointer; list-style: none; padding: 14px 0 6px; font-weight: 500; color: var(--accent); font-size: 15px; }
+summary::-webkit-details-marker { display: none; }
+.phrase-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+input[type="search"], select { display: block; width: 100%; margin-top: 4px; padding: 8px 12px; border: 0; border-radius: 10px; background: var(--fill-2); color: var(--text); font-size: 15px; }
+
+/* Conversation */
+.history { list-style: none; margin: 12px 0 0; padding: 0; max-height: 460px; overflow: auto; }
+.history li { padding: 12px 0; border-bottom: 1px solid var(--separator); }
+.history li:last-child { border-bottom: 0; }
+.history .who { font-size: 12px; font-weight: 600; color: var(--secondary); text-transform: uppercase; letter-spacing: .03em; }
+.history .message { font-size: 17px; margin: 2px 0; }
+.history .delivery { font-size: 13px; color: var(--secondary); }
+.history li[data-type="reply"] .message { color: var(--accent); }
+#history-empty { margin-top: 14px; }
+
+/* Gesture guide */
+.guide { margin-top: 48px; }
+.section-title { font-size: clamp(26px, 3.4vw, 34px); font-weight: 600; letter-spacing: -.025em; margin-bottom: 6px; }
+.section-title span { color: var(--accent); }
+.gesture-grid { list-style: none; padding: 0; margin: 20px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.gesture-grid li { background: var(--card); border-radius: 16px; box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; transition: transform .25s, box-shadow .25s; }
+.gesture-grid li[data-active="true"] { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--accent), var(--shadow); }
+.gesture-grid .name { font-size: 13px; font-weight: 600; color: var(--secondary); display: flex; justify-content: space-between; }
+.gesture-grid .name::after { content: "Shape"; font-weight: 500; }
+.gesture-grid li[data-kind="motion"] .name::after { content: "Motion"; }
+.gesture-grid .meaning { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+.gesture-grid small { font-size: 13px; color: var(--secondary); }
+
+/* Device tools */
+.tools { margin-top: 40px; padding: 4px 24px; }
+.tools > summary { color: var(--text); font-size: 17px; font-weight: 600; padding: 16px 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tools[open] { padding-bottom: 24px; }
+.notice { padding: 12px 14px; border-radius: 12px; background: var(--fill-2); }
+.tools-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 10px; }
+.tools-actions button { font-size: 15px; }
+.table-scroll { overflow-x: auto; margin: 18px 0 6px; }
+.sensors { border-collapse: collapse; width: 100%; max-width: 680px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.sensors caption { text-align: left; font-weight: 600; margin-bottom: 6px; }
+.sensors caption span { margin-left: 10px; color: var(--accent); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+th, td { text-align: left; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--separator); }
+th { color: var(--secondary); font-weight: 500; }
+.settings { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--separator); }
+.settings h3 { font-size: 17px; font-weight: 600; }
+.settings label { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; font-size: 15px; }
+.settings input { margin-top: 4px; width: 17px; height: 17px; accent-color: var(--accent); }
+.settings button { margin-top: 12px; }
+
+footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; grid-template-areas: "hero" "hand" "reply" "conversation"; gap: 14px; }
+  .env-bar { justify-content: flex-start; margin-bottom: 16px; }
+  .topbar { padding: 10px 16px; }
+  main { padding: 16px 16px 32px; }
+  .card { padding: 20px; }
+  .hero { min-height: 240px; }
+  .phrase { margin: 22px 0; }
+  .phrase-filters { grid-template-columns: 1fr; }
+  .tools { padding: 4px 20px; }
+  footer { padding: 0 16px 24px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="SignBridge home">SignBridge</a>
-    <div class="connection"><span id="connection" role="status">Connecting to glove…</span><button id="reconnect" class="quiet" type="button">Reconnect</button></div>
+    <div class="connection"><span id="connection" class="status" role="status">Connecting…</span><button id="reconnect" class="link" type="button">Reconnect</button></div>
   </header>
   <main>
-    <p id="connection-help" class="connection-help" hidden>Join the glove’s Wi-Fi network, then open <a href="http://192.168.4.1">192.168.4.1</a>. Keep this page open while communicating.</p>
-    <div class="workspace">
-      <div class="communication">
-        <section class="translation" aria-labelledby="translation-heading">
-          <div class="section-heading"><h1 id="translation-heading">From the glove</h1><button id="sound" class="quiet" type="button" aria-pressed="false">Enable voice</button></div>
-          <div id="environments" class="environments" role="group" aria-label="Environment"></div>
-          <p id="translation" class="sign" role="status" aria-live="polite">Ready when you are.</p>
-          <div class="translation-foot"><span id="sign-detail">A recognized gesture will appear here.</span><button id="replay" class="quiet" type="button" disabled>Speak again</button></div>
-        </section>
-        <section class="reply-section" aria-labelledby="reply-heading">
-          <h2 id="reply-heading">Reply to the glove</h2>
-          <div id="quick-replies" class="quick-replies" aria-label="Suggested replies"></div>
-          <form id="reply-form">
-            <label for="reply-text">Your message</label>
-            <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the LCD…" required></textarea>
-            <div class="reply-foot"><span id="lcd-preview">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send reply</button></div>
-          </form>
-          <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-          <details class="phrases"><summary>Everyday phrases</summary><div class="phrase-filters"><label>Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label>Find a phrase<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="quick-replies"></div></details>
-        </section>
-      </div>
-      <section class="conversation" aria-labelledby="conversation-heading">
-        <div class="section-heading"><h2 id="conversation-heading">Conversation</h2><button id="clear" class="quiet" type="button">Clear here</button></div>
-        <p id="history-empty" class="muted">Recognized gestures and replies appear here.</p>
+    <p id="connection-help" class="banner" hidden>Join the glove’s Wi-Fi, then open <a href="http://192.168.4.1">192.168.4.1</a>. Keep this page open while communicating.</p>
+
+    <nav class="env-bar" aria-label="Environment">
+      <div id="environments" class="segmented" role="radiogroup" aria-label="Environment"></div>
+    </nav>
+
+    <div class="layout">
+      <section class="card hero" aria-labelledby="translation-heading">
+        <div class="card-head"><h1 id="translation-heading" class="eyebrow">From the glove</h1><button id="sound" class="pill" type="button" aria-pressed="false">Enable voice</button></div>
+        <p id="translation" class="phrase" role="status" aria-live="polite">Ready when you are.</p>
+        <div class="hero-foot"><span id="sign-detail" class="secondary">Make a gesture to begin.</span><button id="replay" class="link" type="button" disabled>Speak again</button></div>
+      </section>
+
+      <section class="card hand-card" aria-labelledby="hand-heading">
+        <div class="card-head"><h2 id="hand-heading" class="eyebrow">Live hand</h2><span id="hand-shape" class="tag">Waiting</span></div>
+        <svg id="hand" class="hand" viewBox="0 0 200 236" role="img" aria-label="Finger bend from the flex sensors">
+          <rect class="finger" data-finger="1" x="50" y="46" width="22" height="92" rx="11"/>
+          <rect class="finger" data-finger="2" x="77" y="36" width="22" height="102" rx="11"/>
+          <rect class="finger" data-finger="3" x="104" y="44" width="22" height="94" rx="11"/>
+          <rect class="finger" data-finger="4" x="130" y="62" width="20" height="76" rx="10"/>
+          <g transform="rotate(-40 62 186)"><rect class="finger" data-finger="0" x="51" y="126" width="22" height="74" rx="11"/></g>
+          <rect class="palm" x="46" y="108" width="108" height="112" rx="36"/>
+        </svg>
+        <ul id="finger-chips" class="chips" aria-label="Bent fingers"></ul>
+        <div class="meter" aria-label="Hand movement">
+          <div class="meter-head"><span class="secondary">Movement</span><span id="speed" class="value">—</span></div>
+          <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
+          <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
+        </div>
+      </section>
+
+      <section class="card reply" aria-labelledby="reply-heading">
+        <h2 id="reply-heading" class="eyebrow">Reply to the glove</h2>
+        <div id="quick-replies" class="chips-row" aria-label="Suggested replies"></div>
+        <form id="reply-form" class="composer">
+          <label for="reply-text" class="visually-hidden">Your message</label>
+          <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the glove’s screen" required></textarea>
+          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send</button></div>
+        </form>
+        <p id="feedback" class="feedback small" role="status" aria-live="polite"></p>
+        <details class="disclosure"><summary>Phrase library</summary><div class="phrase-filters"><label class="small secondary">Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label class="small secondary">Search<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="chips-row"></div></details>
+      </section>
+
+      <section class="card conversation" aria-labelledby="conversation-heading">
+        <div class="card-head"><h2 id="conversation-heading" class="eyebrow">Conversation</h2><button id="clear" class="link" type="button">Clear</button></div>
+        <p id="history-empty" class="secondary small">Gestures and replies appear here.</p>
         <ol id="history" class="history" aria-live="polite" aria-relevant="additions"></ol>
       </section>
     </div>
+
     <section class="guide" aria-labelledby="guide-heading">
-      <h2 id="guide-heading">Gestures in <span id="guide-env">Everyday</span></h2>
-      <p class="hint">The same eight gestures mean different things in each environment. Shapes: hold for half a second. Motions: start from a still, open hand.</p>
-      <ol id="gesture-guide" class="gesture-guide"></ol>
+      <h2 id="guide-heading" class="section-title">Gestures in <span id="guide-env">Everyday</span></h2>
+      <p class="secondary">Same eight gestures, different meaning in every place. Hold a shape for half a second. Start motions from a still, open hand.</p>
+      <ol id="gesture-guide" class="gesture-grid"></ol>
     </section>
-    <details id="device-tools" class="device-tools">
-      <summary>Device tools <span id="sensor-summary">Waiting for glove</span></summary>
-      <p id="device-notice" class="notice" role="status">Calibration instructions appear here.</p>
-      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel task</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="hint">For calibration, straighten your fingers and hold your hand flat and still. Serial values print at 115200 baud; wireless readings stay available.</p>
-      <div class="sensor-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
-      <p id="imu-values" class="measurements">Accelerometer and gyroscope unavailable.</p>
-      <p id="motion-values" class="measurements">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="hint">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled. Connect a motor through a suitable driver.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+
+    <details id="device-tools" class="card tools">
+      <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
+      <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
+      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
+      <p class="secondary small">To calibrate, straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
+      <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
+      <p id="motion-values" class="mono small">No motion analysed yet.</p>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
-  <footer>Glove recognition runs on the ESP32. Voice plays on this device.</footer>
+  <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
   <script type="module">
 // Gesture catalogue and per-environment meanings. Pure data shared by the
 // website, the tests and the firmware table generated by scripts/embed-web.mjs.
@@ -583,11 +780,13 @@ const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null;
+let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
+const BEND_ON = [150, 100, 100, 130, 110]; // matches firmware bendOn: a finger reads bent at this change
+const SHAPE_NAMES = { FIST: 'Fist', POINT: 'Point', PINKY: 'Pinky up', ROCK: 'Index + pinky' };
 
 function feedback(text, error = false) {
   $('feedback').textContent = text;
@@ -600,7 +799,6 @@ function availability() {
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
-  for (const button of $('environments').querySelectorAll('button')) button.disabled = !online;
   for (const button of $('quick-replies').querySelectorAll('button')) button.disabled = !online;
 }
 function connection(connected, label) {
@@ -647,10 +845,42 @@ function renderEnvironment(envId) {
   if (shownEnv === envId) return;
   shownEnv = envId;
   const env = environment(envId);
-  for (const button of $('environments').children) button.setAttribute('aria-pressed', String(button.dataset.env === env.id));
+  for (const button of $('environments').children) button.setAttribute('aria-checked', String(button.dataset.env === env.id));
   $('guide-env').textContent = env.name;
   for (const item of $('gesture-guide').children) item.querySelector('.meaning').textContent = env.phrases[item.dataset.gesture].text;
   if ([...$('scenario').options].some((option) => option.value === env.id)) { $('scenario').value = env.id; renderPhrases(); }
+}
+// Same rule as the firmware's handShape(): only index, ring and pinky count.
+function handShape(pattern) {
+  const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
+  if (!ring) return null;
+  if (index && pinky) return 'FIST';
+  if (!index && pinky) return 'POINT';
+  if (index && !pinky) return 'PINKY';
+  return 'ROCK';
+}
+function renderHand() {
+  const ready = state.useFlex && state.calibrated;
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / BEND_ON[i])) : 0);
+  for (const finger of $('hand').querySelectorAll('.finger')) {
+    const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
+    // An ignored middle finger copies its neighbours so a fist never shows it raised.
+    const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
+    finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
+    finger.dataset.bent = String(ready && state.pattern[i] === '1');
+    finger.dataset.ignored = String(ignored);
+    const chip = $('finger-chips').children[i];
+    chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
+  }
+  const shape = ready ? handShape(state.pattern) : null;
+  $('hand-shape').textContent = !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').dataset.shape = String(Boolean(shape));
+  const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
+  $('speed').textContent = state.mpu ? `${Math.round(speed)}°/s` : 'MPU unavailable';
+  $('speed-fill').style.width = `${Math.min(100, speed / 3)}%`;
+  $('speed-fill').dataset.moving = String(speed > 90);
+  const motion = state.motion;
+  if (motion?.energy) $('motion-summary').textContent = motion.result ? `Last motion: ${GESTURES[motion.result]?.name ?? motion.result}` : 'Last motion not recognized. Try a bigger, cleaner movement.';
 }
 function addHistory(key, text, type, detail) {
   let item = rows.get(key);
@@ -724,7 +954,10 @@ function receive(input) {
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
   $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
-  renderEnvironment(state.env);
+  // Ignore a snapshot taken before the glove applied a just-clicked environment.
+  const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
+  if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
+  renderHand();
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
@@ -735,7 +968,7 @@ function reconnect() {
   const token = ++generation;
   clearTimeout(retryTimer);
   if (socket) { socket.onclose = null; socket.close(); }
-  connection(false, 'Connecting to glove…');
+  connection(false, 'Connecting…');
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`); socket = ws;
   ws.onmessage = (message) => {
     if (token !== generation) return;
@@ -778,10 +1011,12 @@ function init() {
   });
   for (const env of ENVIRONMENTS) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = env.name;
-    button.dataset.env = env.id; button.disabled = true; button.setAttribute('aria-pressed', 'false');
-    button.onclick = () => run('env', { value: env.id });
+    button.dataset.env = env.id; button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', 'false');
+    // Switch the page immediately; the glove follows when connected and its state wins.
+    button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
+  for (const name of fingerNames) { const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip); }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;

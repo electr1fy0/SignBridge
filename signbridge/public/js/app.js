@@ -8,11 +8,13 @@ const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null;
+let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
+const BEND_ON = [150, 100, 100, 130, 110]; // matches firmware bendOn: a finger reads bent at this change
+const SHAPE_NAMES = { FIST: 'Fist', POINT: 'Point', PINKY: 'Pinky up', ROCK: 'Index + pinky' };
 
 function feedback(text, error = false) {
   $('feedback').textContent = text;
@@ -25,7 +27,6 @@ function availability() {
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
-  for (const button of $('environments').querySelectorAll('button')) button.disabled = !online;
   for (const button of $('quick-replies').querySelectorAll('button')) button.disabled = !online;
 }
 function connection(connected, label) {
@@ -72,10 +73,42 @@ function renderEnvironment(envId) {
   if (shownEnv === envId) return;
   shownEnv = envId;
   const env = environment(envId);
-  for (const button of $('environments').children) button.setAttribute('aria-pressed', String(button.dataset.env === env.id));
+  for (const button of $('environments').children) button.setAttribute('aria-checked', String(button.dataset.env === env.id));
   $('guide-env').textContent = env.name;
   for (const item of $('gesture-guide').children) item.querySelector('.meaning').textContent = env.phrases[item.dataset.gesture].text;
   if ([...$('scenario').options].some((option) => option.value === env.id)) { $('scenario').value = env.id; renderPhrases(); }
+}
+// Same rule as the firmware's handShape(): only index, ring and pinky count.
+function handShape(pattern) {
+  const [, index, , ring, pinky] = [...pattern].map((bit) => bit === '1');
+  if (!ring) return null;
+  if (index && pinky) return 'FIST';
+  if (!index && pinky) return 'POINT';
+  if (index && !pinky) return 'PINKY';
+  return 'ROCK';
+}
+function renderHand() {
+  const ready = state.useFlex && state.calibrated;
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / BEND_ON[i])) : 0);
+  for (const finger of $('hand').querySelectorAll('.finger')) {
+    const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
+    // An ignored middle finger copies its neighbours so a fist never shows it raised.
+    const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
+    finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
+    finger.dataset.bent = String(ready && state.pattern[i] === '1');
+    finger.dataset.ignored = String(ignored);
+    const chip = $('finger-chips').children[i];
+    chip.dataset.bent = finger.dataset.bent; chip.dataset.ignored = String(ignored);
+  }
+  const shape = ready ? handShape(state.pattern) : null;
+  $('hand-shape').textContent = !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : state.pattern[1] === '0' && state.pattern[3] === '0' ? 'Open hand' : 'No shape';
+  $('hand-shape').dataset.shape = String(Boolean(shape));
+  const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
+  $('speed').textContent = state.mpu ? `${Math.round(speed)}°/s` : 'MPU unavailable';
+  $('speed-fill').style.width = `${Math.min(100, speed / 3)}%`;
+  $('speed-fill').dataset.moving = String(speed > 90);
+  const motion = state.motion;
+  if (motion?.energy) $('motion-summary').textContent = motion.result ? `Last motion: ${GESTURES[motion.result]?.name ?? motion.result}` : 'Last motion not recognized. Try a bigger, cleaner movement.';
 }
 function addHistory(key, text, type, detail) {
   let item = rows.get(key);
@@ -149,7 +182,10 @@ function receive(input) {
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
   $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
-  renderEnvironment(state.env);
+  // Ignore a snapshot taken before the glove applied a just-clicked environment.
+  const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
+  if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
+  renderHand();
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
@@ -160,7 +196,7 @@ function reconnect() {
   const token = ++generation;
   clearTimeout(retryTimer);
   if (socket) { socket.onclose = null; socket.close(); }
-  connection(false, 'Connecting to glove…');
+  connection(false, 'Connecting…');
   const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/ws`); socket = ws;
   ws.onmessage = (message) => {
     if (token !== generation) return;
@@ -203,10 +239,12 @@ function init() {
   });
   for (const env of ENVIRONMENTS) {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = env.name;
-    button.dataset.env = env.id; button.disabled = true; button.setAttribute('aria-pressed', 'false');
-    button.onclick = () => run('env', { value: env.id });
+    button.dataset.env = env.id; button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', 'false');
+    // Switch the page immediately; the glove follows when connected and its state wins.
+    button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
+  for (const name of fingerNames) { const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip); }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;

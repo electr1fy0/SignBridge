@@ -3,60 +3,85 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f5f7fa">
+  <meta name="theme-color" content="#f5f5f7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
   <title>SignBridge</title>
   <link rel="stylesheet" href="css/index.css">
 </head>
 <body>
   <header class="topbar">
     <a class="brand" href="/" aria-label="SignBridge home">SignBridge</a>
-    <div class="connection"><span id="connection" role="status">Connecting to glove…</span><button id="reconnect" class="quiet" type="button">Reconnect</button></div>
+    <div class="connection"><span id="connection" class="status" role="status">Connecting…</span><button id="reconnect" class="link" type="button">Reconnect</button></div>
   </header>
   <main>
-    <p id="connection-help" class="connection-help" hidden>Join the glove’s Wi-Fi network, then open <a href="http://192.168.4.1">192.168.4.1</a>. Keep this page open while communicating.</p>
-    <div class="workspace">
-      <div class="communication">
-        <section class="translation" aria-labelledby="translation-heading">
-          <div class="section-heading"><h1 id="translation-heading">From the glove</h1><button id="sound" class="quiet" type="button" aria-pressed="false">Enable voice</button></div>
-          <div id="environments" class="environments" role="group" aria-label="Environment"></div>
-          <p id="translation" class="sign" role="status" aria-live="polite">Ready when you are.</p>
-          <div class="translation-foot"><span id="sign-detail">A recognized gesture will appear here.</span><button id="replay" class="quiet" type="button" disabled>Speak again</button></div>
-        </section>
-        <section class="reply-section" aria-labelledby="reply-heading">
-          <h2 id="reply-heading">Reply to the glove</h2>
-          <div id="quick-replies" class="quick-replies" aria-label="Suggested replies"></div>
-          <form id="reply-form">
-            <label for="reply-text">Your message</label>
-            <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the LCD…" required></textarea>
-            <div class="reply-foot"><span id="lcd-preview">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send reply</button></div>
-          </form>
-          <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-          <details class="phrases"><summary>Everyday phrases</summary><div class="phrase-filters"><label>Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label>Find a phrase<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="quick-replies"></div></details>
-        </section>
-      </div>
-      <section class="conversation" aria-labelledby="conversation-heading">
-        <div class="section-heading"><h2 id="conversation-heading">Conversation</h2><button id="clear" class="quiet" type="button">Clear here</button></div>
-        <p id="history-empty" class="muted">Recognized gestures and replies appear here.</p>
+    <p id="connection-help" class="banner" hidden>Join the glove’s Wi-Fi, then open <a href="http://192.168.4.1">192.168.4.1</a>. Keep this page open while communicating.</p>
+
+    <nav class="env-bar" aria-label="Environment">
+      <div id="environments" class="segmented" role="radiogroup" aria-label="Environment"></div>
+    </nav>
+
+    <div class="layout">
+      <section class="card hero" aria-labelledby="translation-heading">
+        <div class="card-head"><h1 id="translation-heading" class="eyebrow">From the glove</h1><button id="sound" class="pill" type="button" aria-pressed="false">Enable voice</button></div>
+        <p id="translation" class="phrase" role="status" aria-live="polite">Ready when you are.</p>
+        <div class="hero-foot"><span id="sign-detail" class="secondary">Make a gesture to begin.</span><button id="replay" class="link" type="button" disabled>Speak again</button></div>
+      </section>
+
+      <section class="card hand-card" aria-labelledby="hand-heading">
+        <div class="card-head"><h2 id="hand-heading" class="eyebrow">Live hand</h2><span id="hand-shape" class="tag">Waiting</span></div>
+        <svg id="hand" class="hand" viewBox="0 0 200 236" role="img" aria-label="Finger bend from the flex sensors">
+          <rect class="finger" data-finger="1" x="50" y="46" width="22" height="92" rx="11"/>
+          <rect class="finger" data-finger="2" x="77" y="36" width="22" height="102" rx="11"/>
+          <rect class="finger" data-finger="3" x="104" y="44" width="22" height="94" rx="11"/>
+          <rect class="finger" data-finger="4" x="130" y="62" width="20" height="76" rx="10"/>
+          <g transform="rotate(-40 62 186)"><rect class="finger" data-finger="0" x="51" y="126" width="22" height="74" rx="11"/></g>
+          <rect class="palm" x="46" y="108" width="108" height="112" rx="36"/>
+        </svg>
+        <ul id="finger-chips" class="chips" aria-label="Bent fingers"></ul>
+        <div class="meter" aria-label="Hand movement">
+          <div class="meter-head"><span class="secondary">Movement</span><span id="speed" class="value">—</span></div>
+          <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
+          <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
+        </div>
+      </section>
+
+      <section class="card reply" aria-labelledby="reply-heading">
+        <h2 id="reply-heading" class="eyebrow">Reply to the glove</h2>
+        <div id="quick-replies" class="chips-row" aria-label="Suggested replies"></div>
+        <form id="reply-form" class="composer">
+          <label for="reply-text" class="visually-hidden">Your message</label>
+          <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the glove’s screen" required></textarea>
+          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send</button></div>
+        </form>
+        <p id="feedback" class="feedback small" role="status" aria-live="polite"></p>
+        <details class="disclosure"><summary>Phrase library</summary><div class="phrase-filters"><label class="small secondary">Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label class="small secondary">Search<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="chips-row"></div></details>
+      </section>
+
+      <section class="card conversation" aria-labelledby="conversation-heading">
+        <div class="card-head"><h2 id="conversation-heading" class="eyebrow">Conversation</h2><button id="clear" class="link" type="button">Clear</button></div>
+        <p id="history-empty" class="secondary small">Gestures and replies appear here.</p>
         <ol id="history" class="history" aria-live="polite" aria-relevant="additions"></ol>
       </section>
     </div>
+
     <section class="guide" aria-labelledby="guide-heading">
-      <h2 id="guide-heading">Gestures in <span id="guide-env">Everyday</span></h2>
-      <p class="hint">The same eight gestures mean different things in each environment. Shapes: hold for half a second. Motions: start from a still, open hand.</p>
-      <ol id="gesture-guide" class="gesture-guide"></ol>
+      <h2 id="guide-heading" class="section-title">Gestures in <span id="guide-env">Everyday</span></h2>
+      <p class="secondary">Same eight gestures, different meaning in every place. Hold a shape for half a second. Start motions from a still, open hand.</p>
+      <ol id="gesture-guide" class="gesture-grid"></ol>
     </section>
-    <details id="device-tools" class="device-tools">
-      <summary>Device tools <span id="sensor-summary">Waiting for glove</span></summary>
-      <p id="device-notice" class="notice" role="status">Calibration instructions appear here.</p>
-      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel task</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="hint">For calibration, straighten your fingers and hold your hand flat and still. Serial values print at 115200 baud; wireless readings stay available.</p>
-      <div class="sensor-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
-      <p id="imu-values" class="measurements">Accelerometer and gyroscope unavailable.</p>
-      <p id="motion-values" class="measurements">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="hint">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled. Connect a motor through a suitable driver.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+
+    <details id="device-tools" class="card tools">
+      <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
+      <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
+      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
+      <p class="secondary small">To calibrate, straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
+      <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
+      <p id="motion-values" class="mono small">No motion analysed yet.</p>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
-  <footer>Glove recognition runs on the ESP32. Voice plays on this device.</footer>
+  <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
