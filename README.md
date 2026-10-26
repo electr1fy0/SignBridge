@@ -48,10 +48,8 @@ straight-hand reading, so increases and decreases both count. Share grounds.
 Use 3.3 V-compatible I²C signals or level shifting for an LCD backpack pulled to 5 V.
 Drive a motor through a suitable transistor/MOSFET driver and flyback diode.
 
-The middle sensor is **ignored initially**, preserving the previous glove's
-workaround. It is still sampled and displayed. After repairing its wiring and
-moving it to GPIO36, uncheck **Ignore middle sensor** under Device tools.
-If using only the MPU, disable **Use flex sensors** there. Motor output starts
+The middle sensor is sampled and displayed but never used for recognition,
+so its wiring does not affect gestures. If using only the MPU, disable **Use flex sensors** there. Motor output starts
 disabled; enable it only when the driver is connected. Hardware settings persist.
 
 ## Gestures and environments
@@ -73,7 +71,7 @@ the LCD and website show the phrase.
 | Shake | Shake hard, any hand shape | Emergency! Please help me. | Emergency! Call a doctor. | Emergency! … | Emergency! … | Emergency! … |
 
 - **Hand shapes** use only the index, ring and pinky sensors; thumb and middle
-  are ignored. Hold the shape for about half a second with the hand fairly still.
+  are not used. Hold the shape for about half a second with the hand fairly still.
 - **Motions** use the gyroscope and accelerometer and do not depend on how the
   MPU is mounted: *shake* is hard and repeated, *flip* ends with the hand turned
   over, *wave* goes back and forth at least twice, *nod* goes out and back once.

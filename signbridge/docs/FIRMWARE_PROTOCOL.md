@@ -61,7 +61,7 @@ Other commands:
 {"op":"bend","reset":true}
 {"op":"live","value":false}
 {"op":"debug","value":true}
-{"op":"settings","useFlex":true,"ignoreMiddle":false,"useMotor":false}
+{"op":"settings","useFlex":true,"useMotor":false}
 ```
 
 Environment ids are `everyday`, `hospital`, `market`, `restaurant` and

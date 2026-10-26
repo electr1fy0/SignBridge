@@ -157,7 +157,6 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .bend-panel h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
 .bend-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
 .bend-rows li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 92px; align-items: center; gap: 14px; padding: 6px 0; font-size: 15px; }
-.bend-rows li[data-ignored="true"] { opacity: .45; }
 .bend-track { position: relative; height: 30px; }
 .bend-track::before, .bend-live { content: ""; position: absolute; left: 0; top: 11px; height: 8px; border-radius: 999px; }
 .bend-track::before { right: 0; background: var(--fill); }

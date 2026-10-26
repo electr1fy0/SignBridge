@@ -8,9 +8,9 @@ export const GESTURES = {
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Pinky up, other fingers closed' },
   ROCK: { name: 'Index + pinky', kind: 'shape', how: 'Index and pinky up, middle and ring closed (thumb either way)' },
   WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, wave side to side two or three times' },
-  FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand, turn the palm over and stop' },
-  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, dip the wrist down and back up once' },
-  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake the hand hard for a second (any hand shape)', urgent: true },
+  FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
+  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up, then hold still' },
+  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake hard and fast side to side for a full second (any hand shape)', urgent: true },
 };
 
 // Replies may be plain strings or {text, lcd:[line1, line2]} when the auto LCD wrap would be ugly.

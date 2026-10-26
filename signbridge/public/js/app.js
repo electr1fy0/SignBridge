@@ -97,8 +97,8 @@ function renderHand() {
   const ready = state.useFlex && state.calibrated;
   const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
-    const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
-    // An ignored middle finger copies its neighbours so a fist never shows it raised.
+    const i = Number(finger.dataset.finger), ignored = i === 2;
+    // Recognition never uses the middle finger; it copies its neighbours so a fist never shows it raised.
     const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
     finger.dataset.bent = String(ready && state.pattern[i] === '1');
@@ -114,7 +114,6 @@ function renderHand() {
     if (!bendDirty) input.value = state.bendOn[i];
     live.style.width = `${Math.min(100, (state.delta[i] / BEND_SCALE) * 100)}%`;
     live.dataset.bent = String(state.pattern[i] === '1');
-    row.dataset.ignored = String(i === 2 && state.ignoreMiddle);
     bendLabel(row.querySelector('.bend-value'), state.delta[i], input.value);
   });
   const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
@@ -187,7 +186,7 @@ function receive(input) {
   const notice = `${state.notice}${state.remaining > 0 ? ` (${state.remaining})` : ''}`;
   if (displayedNotice !== notice) { $('device-notice').textContent = notice; displayedNotice = notice; }
   $('sensor-summary').textContent = `MPU ${state.mpu ? 'connected' : 'unavailable'} · LCD ${state.lcd ? 'connected' : 'unavailable'}`;
-  $('pattern').textContent = `${state.pattern}${state.ignoreMiddle ? ' · middle ignored' : ''}`;
+  $('pattern').textContent = `${state.pattern} · middle not used`;
   fingerNames.forEach((_, index) => {
     const row = $('sensor-rows').children[index];
     row.children[2].textContent = state.flex[index]; row.children[3].textContent = Math.round(state.baseline[index]); row.children[4].textContent = state.delta[index];
@@ -203,7 +202,7 @@ function receive(input) {
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
-  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('ignore-middle').checked = state.ignoreMiddle; $('use-motor').checked = state.useMotor; }
+  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; }
   availability();
 }
 function reconnect() {
@@ -266,7 +265,7 @@ function init() {
     Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
-    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
+    track.append(live, input); row.append(label, track, value); row.hidden = name === 'Middle'; $('bend-rows').append(row);
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
@@ -295,7 +294,7 @@ function init() {
   $('settings').oninput = () => { settingsDirty = true; };
   $('settings').onsubmit = async (event) => {
     event.preventDefault();
-    try { await command('settings', { useFlex: $('use-flex').checked, ignoreMiddle: $('ignore-middle').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
+    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
     catch (error) { feedback(error.message, true); }
   };
   $('clear').onclick = () => { rows.clear(); $('history').replaceChildren(); $('history-empty').hidden = true; $('history-empty').textContent = 'Conversation cleared on this screen.'; $('history-empty').hidden = false; };

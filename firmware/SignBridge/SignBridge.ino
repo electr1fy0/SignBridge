@@ -207,7 +207,6 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .bend-panel h3 { font-size: 17px; font-weight: 600; margin-bottom: 4px; }
 .bend-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
 .bend-rows li { display: grid; grid-template-columns: 64px minmax(0, 1fr) 92px; align-items: center; gap: 14px; padding: 6px 0; font-size: 15px; }
-.bend-rows li[data-ignored="true"] { opacity: .45; }
 .bend-track { position: relative; height: 30px; }
 .bend-track::before, .bend-live { content: ""; position: absolute; left: 0; top: 11px; height: 8px; border-radius: 999px; }
 .bend-track::before { right: 0; background: var(--fill); }
@@ -323,7 +322,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">The middle sensor (GPIO36) is shown but never used for recognition.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
   <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
@@ -338,9 +337,9 @@ const GESTURES = {
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Pinky up, other fingers closed' },
   ROCK: { name: 'Index + pinky', kind: 'shape', how: 'Index and pinky up, middle and ring closed (thumb either way)' },
   WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, wave side to side two or three times' },
-  FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand, turn the palm over and stop' },
-  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, dip the wrist down and back up once' },
-  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake the hand hard for a second (any hand shape)', urgent: true },
+  FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
+  NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up, then hold still' },
+  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake hard and fast side to side for a full second (any hand shape)', urgent: true },
 };
 
 // Replies may be plain strings or {text, lcd:[line1, line2]} when the auto LCD wrap would be ugly.
@@ -897,8 +896,8 @@ function renderHand() {
   const ready = state.useFlex && state.calibrated;
   const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
-    const i = Number(finger.dataset.finger), ignored = i === 2 && state.ignoreMiddle;
-    // An ignored middle finger copies its neighbours so a fist never shows it raised.
+    const i = Number(finger.dataset.finger), ignored = i === 2;
+    // Recognition never uses the middle finger; it copies its neighbours so a fist never shows it raised.
     const bend = ignored ? (bendOf(1) + bendOf(3)) / 2 : bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
     finger.dataset.bent = String(ready && state.pattern[i] === '1');
@@ -914,7 +913,6 @@ function renderHand() {
     if (!bendDirty) input.value = state.bendOn[i];
     live.style.width = `${Math.min(100, (state.delta[i] / BEND_SCALE) * 100)}%`;
     live.dataset.bent = String(state.pattern[i] === '1');
-    row.dataset.ignored = String(i === 2 && state.ignoreMiddle);
     bendLabel(row.querySelector('.bend-value'), state.delta[i], input.value);
   });
   const speed = state.mpu ? Math.hypot(...state.gyro) : 0;
@@ -987,7 +985,7 @@ function receive(input) {
   const notice = `${state.notice}${state.remaining > 0 ? ` (${state.remaining})` : ''}`;
   if (displayedNotice !== notice) { $('device-notice').textContent = notice; displayedNotice = notice; }
   $('sensor-summary').textContent = `MPU ${state.mpu ? 'connected' : 'unavailable'} · LCD ${state.lcd ? 'connected' : 'unavailable'}`;
-  $('pattern').textContent = `${state.pattern}${state.ignoreMiddle ? ' · middle ignored' : ''}`;
+  $('pattern').textContent = `${state.pattern} · middle not used`;
   fingerNames.forEach((_, index) => {
     const row = $('sensor-rows').children[index];
     row.children[2].textContent = state.flex[index]; row.children[3].textContent = Math.round(state.baseline[index]); row.children[4].textContent = state.delta[index];
@@ -1003,7 +1001,7 @@ function receive(input) {
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
-  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('ignore-middle').checked = state.ignoreMiddle; $('use-motor').checked = state.useMotor; }
+  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; }
   availability();
 }
 function reconnect() {
@@ -1066,7 +1064,7 @@ function init() {
     Object.assign(input, { type: 'range', min: 20, max: BEND_SCALE, step: 5, value: 100 });
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
-    track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
+    track.append(live, input); row.append(label, track, value); row.hidden = name === 'Middle'; $('bend-rows').append(row);
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
@@ -1095,7 +1093,7 @@ function init() {
   $('settings').oninput = () => { settingsDirty = true; };
   $('settings').onsubmit = async (event) => {
     event.preventDefault();
-    try { await command('settings', { useFlex: $('use-flex').checked, ignoreMiddle: $('ignore-middle').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
+    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
     catch (error) { feedback(error.message, true); }
   };
   $('clear').onclick = () => { rows.clear(); $('history').replaceChildren(); $('history-empty').hidden = true; $('history-empty').textContent = 'Conversation cleared on this screen.'; $('history-empty').hidden = false; };
@@ -1160,7 +1158,7 @@ SemaphoreHandle_t snapshotMutex;
 std::atomic<bool> broadcastPending{false};
 String snapshot;
 
-bool useFlex = true, ignoreMiddle = true, useMotor = false;
+bool useFlex = true, useMotor = false;
 bool liveOutput = true, debugOn = false;
 bool mpuOK = false, lcdOK = false, lcdError = false;
 bool flexReady = false, imuReady = false;
@@ -1199,7 +1197,7 @@ int historyNext = 0, historyCount = 0;
 struct Command {
   char op[20], id[40], text[161], lines[2][17], vib[9];
   int index;
-  bool value, flex, middle, motor, reset;
+  bool value, flex, motor, reset;
   int bend[5];
 };
 enum class Job { Idle, CalPrep, CalSample };
@@ -1266,11 +1264,10 @@ void readFlex() {
     delta[i] = abs(int(filtered[i] - baseline[i]));
     if (!bent[i] && delta[i] >= bendOn[i]) bent[i] = true;
     else if (bent[i] && delta[i] <= bendOn[i] * 2 / 3) bent[i] = false;
-    if (ignoreMiddle && i == 2) bent[i] = false;
     if (bent[i]) mask |= 1 << i;
   }
 }
-// Only index, ring and pinky decide a hand shape. Thumb and middle are ignored,
+// Only index, ring and pinky decide a hand shape. Thumb and middle are not used,
 // so one noisy sensor cannot break recognition.
 int handShape() {
   bool i = bent[F_INDEX], r = bent[F_RING], p = bent[F_PINKY];
@@ -1386,7 +1383,7 @@ void resetRecognition() {
   motionArmed = false; restSince = 0; cooldownAt = millis();
 }
 void loadSettings() {
-  useFlex = prefs.getBool("useFlex", true); ignoreMiddle = prefs.getBool("ignoreMiddle", true); useMotor = prefs.getBool("useMotor", false);
+  useFlex = prefs.getBool("useFlex", true); useMotor = prefs.getBool("useMotor", false);
   env = prefs.getUChar("env", 0);
   int saved[5];
   bool valid = prefs.getBytesLength("bendOn") == sizeof(saved) && prefs.getBytes("bendOn", saved, sizeof(saved)) == sizeof(saved);
@@ -1519,7 +1516,7 @@ void printReadings() {
 void printStatus() {
   Serial.printf("Environment: %s (e1..e%d to switch)\n", envIds[env], ENV_N);
   for (int g = 0; g < GESTURE_N; ++g) Serial.printf("%-6s -> %s %s\n", gestureNames[g], phraseLcd[env][g][0], phraseLcd[env][g][1]);
-  Serial.printf("Wi-Fi %s / %s; http://192.168.4.1; middle ignored: %s\n", AP_SSID, AP_PASSWORD, ignoreMiddle ? "yes" : "no");
+  Serial.printf("Wi-Fi %s / %s; http://192.168.4.1\n", AP_SSID, AP_PASSWORD);
 }
 void execute(const Command& c) {
   if (!strcmp(c.op, "reply")) {
@@ -1537,8 +1534,8 @@ void execute(const Command& c) {
   else if (!strcmp(c.op, "debug")) { debugOn = c.value; Serial.printf("Debug: %s\n", debugOn ? "ON" : "OFF"); }
   else if (!strcmp(c.op, "settings")) {
     if (job != Job::Idle) { setNotice("Finish or cancel the current task before changing sensors."); return; }
-    useFlex = c.flex; ignoreMiddle = c.middle; useMotor = c.motor;
-    prefs.putBool("useFlex", useFlex); prefs.putBool("ignoreMiddle", ignoreMiddle); prefs.putBool("useMotor", useMotor);
+    useFlex = c.flex; useMotor = c.motor;
+    prefs.putBool("useFlex", useFlex); prefs.putBool("useMotor", useMotor);
     if (!useMotor) { vibration.active = false; digitalWrite(MOTOR_PIN, LOW); }
     resetRecognition(); setNotice("Sensor settings saved.");
   } else if (!strcmp(c.op, "bend")) {
@@ -1590,7 +1587,7 @@ void publishState() {
   jsonBool(root,"mpu",mpuOK); jsonBool(root,"lcd",lcdOK && !lcdError);
   jsonBool(root,"calibrated",flexReady); jsonBool(root,"imuCalibrated",imuReady);
   jsonBool(root,"live",liveOutput); jsonBool(root,"debug",debugOn);
-  jsonBool(root,"useFlex",useFlex); jsonBool(root,"ignoreMiddle",ignoreMiddle); jsonBool(root,"useMotor",useMotor);
+  jsonBool(root,"useFlex",useFlex); jsonBool(root,"useMotor",useMotor);
   addInts(root,"bendOn",bendOn,5);
   cJSON_AddStringToObject(root,"env",envIds[env]);
   cJSON_AddStringToObject(root,"ip",WiFi.softAPIP().toString().c_str());
@@ -1691,9 +1688,9 @@ esp_err_t commandHandler(httpd_req_t* req) {
   } else if(!strcmp(op,"live") || !strcmp(op,"debug")) {
     cJSON* value=cJSON_GetObjectItemCaseSensitive(root,"value"); valid &= cJSON_IsBool(value); c.value=cJSON_IsTrue(value);
   } else if(!strcmp(op,"settings")) {
-    cJSON* flex=cJSON_GetObjectItemCaseSensitive(root,"useFlex"), *middle=cJSON_GetObjectItemCaseSensitive(root,"ignoreMiddle"), *motor=cJSON_GetObjectItemCaseSensitive(root,"useMotor");
-    valid &= cJSON_IsBool(flex) && cJSON_IsBool(middle) && cJSON_IsBool(motor);
-    c.flex=cJSON_IsTrue(flex); c.middle=cJSON_IsTrue(middle); c.motor=cJSON_IsTrue(motor);
+    cJSON* flex=cJSON_GetObjectItemCaseSensitive(root,"useFlex"), *motor=cJSON_GetObjectItemCaseSensitive(root,"useMotor");
+    valid &= cJSON_IsBool(flex) && cJSON_IsBool(motor);
+    c.flex=cJSON_IsTrue(flex); c.motor=cJSON_IsTrue(motor);
   } else if(strcmp(op,"calibrate") && strcmp(op,"cancel") && strcmp(op,"status")) valid=false;
   cJSON_Delete(root);
   if(!valid) { httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Invalid command or fields"); return ESP_OK; }
