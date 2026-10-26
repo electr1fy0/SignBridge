@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { LineBuffer, parseLine } from '../public/js/parser.js';
-import { translate, normalizeSignName, SIGNS } from '../public/js/signs.js';
 
 /** Feed chunks through a fresh buffer and return the recognition events in order. */
 function recognitions(chunks) {
@@ -18,7 +17,6 @@ function recognitions(chunks) {
 
 test('1. official event is recognised', () => {
   assert.deepEqual(recognitions(['>>> RECOGNIZED: OKAY <<<\n']), ['OKAY']);
-  assert.equal(translate('OKAY').text, 'Okay');
 });
 
 test('2. the same official event twice yields two events', () => {
@@ -92,10 +90,3 @@ test('live toggle replies and proposed ACK', () => {
   assert.deepEqual(parseLine('ACK|7K2Q'), { type: 'ack', id: '7K2Q' });
 });
 
-test('all 14 firmware signs translate to known English', () => {
-  assert.equal(Object.keys(SIGNS).length, 14);
-  for (const key of Object.keys(SIGNS)) assert.ok(translate(key).known, key);
-  assert.equal(translate('thank_you').text, 'Thank you');
-  assert.equal(normalizeSignName('  come   here '), 'COME HERE');
-  assert.deepEqual(translate('NEW_SIGN'), { key: 'NEW SIGN', text: 'New sign', known: false, sketch: null });
-});

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateState, consumeEvents, replyDelivery } from '../public/js/device.js';
-const makeState = (events = [], boot = 'boot-a') => ({ type: 'state', boot, uptime: 1234, flex: [0,0,0,0,0], delta: [0,0,0,0,0], baseline: [0,0,0,0,0], acc: [0,0,9.81], gyro: [0,0,0], flexTraining: [false,false,false,false,false,false], motionTraining: [0,0,0,0,0,0,0,0], events });
-const sign = (seq, text = 'WATER') => ({ seq, type: 'sign', source: 'flex', text });
+const makeState = (events = [], boot = 'boot-a') => ({ type: 'state', boot, uptime: 1234, flex: [0,0,0,0,0], delta: [0,0,0,0,0], baseline: [0,0,0,0,0], acc: [0,0,9.81], gyro: [0,0,0], env: 'everyday', events });
+const sign = (seq, text = 'FIST') => ({ seq, type: 'sign', source: 'flex', env: 'everyday', text });
 test('initial device history is visible without replaying old speech', () => {
   const result = consumeEvents({ boot: null, seq: 0 }, makeState([sign(1), sign(2)]));
   assert.equal(result.events.length, 2); assert.equal(result.audible.length, 0);
@@ -16,7 +16,7 @@ test('overlapping HTTP and WebSocket snapshots do not duplicate signs', () => {
   assert.equal(repeated.events.length, 0);
 });
 test('restart accepts new low sequence numbers without speaking old device history', () => {
-  const result = consumeEvents({ boot: 'boot-a', seq: 99 }, makeState([sign(1, 'HELLO')], 'boot-b'));
+  const result = consumeEvents({ boot: 'boot-a', seq: 99 }, makeState([sign(1, 'WAVE')], 'boot-b'));
   assert.equal(result.events.length, 1); assert.equal(result.cursor.seq, 1); assert.equal(result.audible.length, 0);
 });
 test('LCD failure never claims hardware delivery', () => {

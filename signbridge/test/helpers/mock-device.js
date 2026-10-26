@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 export function makeMockDevice() {
   const clients = new Set();
   const commands = [];
-  const state = { type:'state', boot:'test-boot', uptime:10000, job:0, remaining:0, notice:'Calibration complete. Show a trained sign.', mpu:true, lcd:true, calibrated:true, imuCalibrated:true, live:true, debug:false, useFlex:true, ignoreMiddle:true, useMotor:false, pattern:'00000', flex:[2200,2100,1800,2300,2250], delta:[0,0,0,0,0], baseline:[2200,2100,1800,2300,2250], acc:[0,0,9.81], gyro:[0,0,0], flexTraining:[true,true,true,true,true,true], motionTraining:[3,3,3,3,3,3,3,3], scores:[-1,-1,-1,-1,-1,-1,-1,-1], events:[] };
+  const state = { type:'state', boot:'test-boot', uptime:10000, job:0, remaining:0, notice:'Calibration complete. Show a trained sign.', mpu:true, lcd:true, calibrated:true, imuCalibrated:true, live:true, debug:false, useFlex:true, ignoreMiddle:true, useMotor:false, pattern:'00000', flex:[2200,2100,1800,2300,2250], delta:[0,0,0,0,0], baseline:[2200,2100,1800,2300,2250], acc:[0,0,9.81], gyro:[0,0,0], env:'everyday', motion:{swings:0,turn:0,tilt:0,energy:0,result:''}, events:[] };
   let seq=0;
   function broadcast() {
     state.uptime+=400;
@@ -21,6 +21,7 @@ export function makeMockDevice() {
     if(c.op==='reply') state.events.push({seq:++seq,type:'reply',text:c.text,source:'partner',requestId:c.id,lcd:state.lcd,haptic:state.useMotor});
     if(c.op==='live') state.live=c.value;
     if(c.op==='debug') state.debug=c.value;
+    if(c.op==='env') state.env=c.value;
     if(c.op==='settings') Object.assign(state,{useFlex:c.useFlex,ignoreMiddle:c.ignoreMiddle,useMotor:c.useMotor});
     if(c.op==='calibrate') {state.job=1;state.notice='Calibration: keep fingers straight and hand still.';}
     if(c.op==='cancel') {state.job=0;state.notice='Task cancelled.';}
@@ -32,7 +33,7 @@ export function makeMockDevice() {
     clients.add(socket);socket.on('data',(data)=>{if((data[0]&15)===8) socket.end();});
     socket.on('error',()=>clients.delete(socket));socket.on('close',()=>clients.delete(socket));broadcast();
   });
-  function sign(text='WATER',source='flex') {state.events.push({seq:++seq,type:'sign',text,source,requestId:'',lcd:false,haptic:false});broadcast();}
+  function sign(text='FIST',source='flex') {state.events.push({seq:++seq,type:'sign',text,source,env:state.env,requestId:'',lcd:false,haptic:false});broadcast();}
   const timer=setInterval(broadcast,400);timer.unref();
   return {server,state,commands,sign,stop:async()=>{clearInterval(timer);for(const client of clients)client.destroy();server.closeAllConnections();await new Promise((resolve)=>server.close(resolve));}};
 }

@@ -18,8 +18,9 @@
       <div class="communication">
         <section class="translation" aria-labelledby="translation-heading">
           <div class="section-heading"><h1 id="translation-heading">From the glove</h1><button id="sound" class="quiet" type="button" aria-pressed="false">Enable voice</button></div>
+          <div id="environments" class="environments" role="group" aria-label="Environment"></div>
           <p id="translation" class="sign" role="status" aria-live="polite">Ready when you are.</p>
-          <div class="translation-foot"><span id="sign-detail">A recognized sign will appear here.</span><button id="replay" class="quiet" type="button" disabled>Speak again</button></div>
+          <div class="translation-foot"><span id="sign-detail">A recognized gesture will appear here.</span><button id="replay" class="quiet" type="button" disabled>Speak again</button></div>
         </section>
         <section class="reply-section" aria-labelledby="reply-heading">
           <h2 id="reply-heading">Reply to the glove</h2>
@@ -35,21 +36,24 @@
       </div>
       <section class="conversation" aria-labelledby="conversation-heading">
         <div class="section-heading"><h2 id="conversation-heading">Conversation</h2><button id="clear" class="quiet" type="button">Clear here</button></div>
-        <p id="history-empty" class="muted">Recognized signs and replies appear here.</p>
+        <p id="history-empty" class="muted">Recognized gestures and replies appear here.</p>
         <ol id="history" class="history" aria-live="polite" aria-relevant="additions"></ol>
       </section>
     </div>
+    <section class="guide" aria-labelledby="guide-heading">
+      <h2 id="guide-heading">Gestures in <span id="guide-env">Everyday</span></h2>
+      <p class="hint">The same eight gestures mean different things in each environment. Shapes: hold for half a second. Motions: start from a still, open hand.</p>
+      <ol id="gesture-guide" class="gesture-guide"></ol>
+    </section>
     <details id="device-tools" class="device-tools">
       <summary>Device tools <span id="sensor-summary">Waiting for glove</span></summary>
-      <p id="device-notice" class="notice" role="status">Calibration and training instructions appear here.</p>
-      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel task</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Match scores: off</button></div>
+      <p id="device-notice" class="notice" role="status">Calibration instructions appear here.</p>
+      <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel task</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
       <p class="hint">For calibration, straighten your fingers and hold your hand flat and still. Serial values print at 115200 baud; wireless readings stay available.</p>
       <div class="sensor-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="measurements">Accelerometer and gyroscope unavailable.</p>
-      <div id="score-panel" hidden><h3>Motion match scores</h3><p class="hint">Lower is closer. A score of 0.65 or less can match. Perform a motion to refresh.</p><div id="scores" class="scores"></div></div>
-      <div class="training-columns"><section><h3>Finger signs</h3><p class="hint">Hold the pattern for one second after the countdown. Pattern order: thumb, index, middle, ring, pinky. 1 = bent.</p><ul id="flex-training" class="training-list"></ul></section><section><h3>Motion signs</h3><p class="hint">Keep fingers open. Wait for “MOVE NOW,” then perform the motion once. Save three examples per sign.</p><ul id="motion-training" class="training-list"></ul></section></div>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for finger signs and open-hand detection</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="hint">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled. Connect a motor through a suitable driver.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
-      <details class="danger-zone"><summary>Reset gesture training</summary><p>This removes all saved finger and motion examples. You will need to train them again.</p><button id="erase" class="danger" type="button" disabled>Erase saved training…</button></details>
+      <p id="motion-values" class="measurements">No motion analysed yet.</p>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="ignore-middle" type="checkbox" checked> Ignore middle sensor until its wiring is repaired</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="hint">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled. Connect a motor through a suitable driver.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
     </details>
   </main>
   <footer>Glove recognition runs on the ESP32. Voice plays on this device.</footer>

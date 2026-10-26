@@ -24,14 +24,16 @@ is no internet-facing service or external font/CDN dependency.
 ## State
 
 Snapshots include `type: "state"`, a per-boot `boot` identifier, `uptime`, device
-health, calibration/training progress, `notice`, raw flex/delta/baseline arrays,
+health, calibration progress, `notice`, raw flex/delta/baseline arrays,
 acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
-training counts, hardware settings, and the most recent 12 conversation events.
-When debug is enabled, `scores` contains the best distance for each motion
-(`-1` means no score yet). The movement acceptance threshold is 0.65.
+the current `env` id, hardware settings, the most recent 12 conversation events,
+and `motion` (`swings`, `turn`, `tilt`, `energy`, `result`) for the last
+analysed movement.
 
-An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `requestId`,
-`lcd`, and `haptic`. Clients deduplicate by boot + sequence and do not speak
+An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `env`,
+`requestId`, `lcd`, and `haptic`. For signs, `text` is the gesture key (`FIST`,
+`POINT`, `PINKY`, `ROCK`, `WAVE`, `FLIP`, `NOD`, `SHAKE`) and `env` is the
+environment it was made in; the browser maps the pair to a phrase with `gestures.js`. Clients deduplicate by boot + sequence and do not speak
 initial/reconnected history again. All connected screens receive the same
 recent events. Browsers keep at most 60 rendered entries in memory.
 
@@ -54,34 +56,32 @@ Other commands:
 ```json
 {"op":"calibrate"}
 {"op":"cancel"}
-{"op":"trainFlex","index":0}
-{"op":"trainMotion","index":0}
+{"op":"env","value":"hospital"}
 {"op":"live","value":false}
 {"op":"debug","value":true}
 {"op":"settings","useFlex":true,"ignoreMiddle":false,"useMotor":false}
-{"op":"erase","confirm":"ERASE"}
 ```
 
-Finger indices are 0–5; motion indices are 0–7, as listed in the project guide.
-Booleans and indices are validated, and training/settings changes are refused
-while another task is active. Reset requires explicit confirmation in the UI
-and the `confirm` field on the wire. HTTP 202 means queued; subsequent state
+Environment ids are `everyday`, `hospital`, `market`, `restaurant` and
+`classroom`. Booleans and ids are validated, and settings changes are refused
+while calibration is running. HTTP 202 means queued; subsequent state
 and reply events report execution. Queue overflow returns 503.
 
-Hardware settings and training persist; serial/debug toggles reset at boot.
+Hardware settings and the environment persist; serial/debug toggles reset at boot.
 Pausing serial output does not pause wireless telemetry or recognition.
 
 ## Serial
 
 Serial Monitor runs at 115200 baud. Commands are whole lines, separated by
-newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `f1..f6`,
-`m1..m8`, `reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
-text is never interpreted as individual training/reset keys.
+newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`,
+`reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
+text is never interpreted as individual command keys.
 
 Recognition keeps the existing diagnostic-friendly format:
 
 ```text
->>> RECOGNIZED: WATER <<<
+>>> RECOGNIZED: FIST <<<
+MEANING (hospital): I AM IN PAIN.
 FLEX  (T I M R P): 2410 | 2980 | 1800 | 3120 | 2875
 DELTA (T I M R P): 310 | 250 | 0 | 15 | 20
 BENT PATTERN: 11000
@@ -91,5 +91,5 @@ STATUS: MPU=OK LCD=OK
 ```
 
 The old proposed `~MSG` serial integration has been replaced by implemented
-HTTP replies. The old `X` single-character erase command is not present in the
-combined sketch; erase is available through the confirmed device-tools action.
+HTTP replies. Gesture training and its erase command were removed; recognition
+uses fixed rules.

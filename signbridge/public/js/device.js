@@ -1,9 +1,10 @@
 // State validation and replay handling shared by the live UI and tests.
 export function validateState(state) {
   if (!state || state.type !== 'state' || typeof state.boot !== 'string' || !Number.isFinite(state.uptime)) throw new Error('This address is not running SignBridge firmware.');
-  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['flexTraining', 6], ['motionTraining', 8]]) {
+  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3]]) {
     if (!Array.isArray(state[key]) || state[key].length !== length) throw new Error(`Incomplete device data: ${key}`);
   }
+  if (typeof state.env !== 'string') throw new Error('Incomplete device data: env');
   if (!Array.isArray(state.events)) throw new Error('Missing device event history.');
   return state;
 }

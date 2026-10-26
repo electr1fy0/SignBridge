@@ -1,4 +1,4 @@
-import { SIGNS, translate, repliesFor, replyItem } from './signs.js';
+import { GESTURES, ENVIRONMENTS, DEFAULT_REPLIES, environment, meaning, replyItem } from './gestures.js';
 import { GENERIC, SCENARIOS } from './phrases.js';
 import { formatLcd, vibFor, makeUid } from './protocol.js';
 import { TextToSpeechManager } from './tts.js';
@@ -8,13 +8,11 @@ const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', lastKey = '', settingsDirty = false, displayedNotice = '';
+let lastTranslation = '', settingsDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
-const flexSigns = Object.entries(SIGNS).filter(([, sign]) => sign.sketch === 'A');
-const motionSigns = Object.entries(SIGNS).filter(([, sign]) => sign.sketch === 'B');
 
 function feedback(text, error = false) {
   $('feedback').textContent = text;
@@ -26,10 +24,8 @@ function availability() {
   $('calibrate').disabled = !online || busy;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
-  for (const id of ['save-settings', 'erase']) $(id).disabled = !online || busy;
-  for (const button of document.querySelectorAll('[data-train]')) {
-    button.disabled = !online || busy || (button.dataset.train === 'trainMotion' ? !state?.mpu || !state?.imuCalibrated : !state?.useFlex || !state?.calibrated);
-  }
+  $('save-settings').disabled = !online || busy;
+  for (const button of $('environments').querySelectorAll('button')) button.disabled = !online;
   for (const button of $('quick-replies').querySelectorAll('button')) button.disabled = !online;
 }
 function connection(connected, label) {
@@ -51,9 +47,9 @@ async function command(op, fields = {}) {
 function run(op, fields) {
   return command(op, fields).catch((error) => feedback(error.message, true));
 }
-function renderQuickReplies(key) {
+function renderQuickReplies(replies) {
   $('quick-replies').replaceChildren();
-  for (const entry of repliesFor(key)) {
+  for (const entry of replies) {
     const reply = replyItem(entry);
     const button = document.createElement('button'); button.type = 'button'; button.textContent = reply.text;
     button.disabled = !online; button.onclick = () => sendReply(reply.text, reply.lcd);
@@ -61,12 +57,25 @@ function renderQuickReplies(key) {
   }
 }
 function showTranslation(event) {
-  const translation = translate(event.text);
-  lastTranslation = translation.text; lastKey = translation.key;
+  const translation = meaning(event.text, event.env);
+  lastTranslation = translation.text;
   $('translation').textContent = translation.text;
-  $('sign-detail').textContent = event.source === 'flex' ? 'Recognized from finger position' : 'Recognized from hand movement';
+  $('translation').dataset.urgent = String(translation.urgent);
+  $('sign-detail').textContent = `${translation.gesture} · ${translation.env} · ${event.source === 'flex' ? 'hand shape' : 'motion'}`;
   $('replay').disabled = !voice.isSupported();
-  renderQuickReplies(lastKey);
+  renderQuickReplies(translation.replies);
+  const card = $('gesture-guide').querySelector(`[data-gesture="${translation.key}"]`);
+  for (const item of $('gesture-guide').children) item.dataset.active = String(item === card);
+  clearTimeout(flashTimer); flashTimer = setTimeout(() => { for (const item of $('gesture-guide').children) item.dataset.active = 'false'; }, 2500);
+}
+function renderEnvironment(envId) {
+  if (shownEnv === envId) return;
+  shownEnv = envId;
+  const env = environment(envId);
+  for (const button of $('environments').children) button.setAttribute('aria-pressed', String(button.dataset.env === env.id));
+  $('guide-env').textContent = env.name;
+  for (const item of $('gesture-guide').children) item.querySelector('.meaning').textContent = env.phrases[item.dataset.gesture].text;
+  if ([...$('scenario').options].some((option) => option.value === env.id)) { $('scenario').value = env.id; renderPhrases(); }
 }
 function addHistory(key, text, type, detail) {
   let item = rows.get(key);
@@ -119,14 +128,15 @@ function receive(input) {
   for (const event of accepted.events) {
     if (event.type === 'sign') {
       showTranslation(event);
-      addHistory(`${state.boot}:${event.seq}`, translate(event.text).text, 'sign', event.source === 'flex' ? 'Finger sign' : 'Motion sign');
+      const translation = meaning(event.text, event.env);
+      addHistory(`${state.boot}:${event.seq}`, translation.text, 'sign', `${translation.gesture} · ${translation.env}`);
     } else {
       const key = pending.has(event.requestId) || rows.has(event.requestId) ? event.requestId : `${state.boot}:${event.seq}`;
       addHistory(key, event.text, 'reply', replyDelivery(event));
       if (pending.has(event.requestId)) { pending.delete(event.requestId); feedback(replyDelivery(event), !event.lcd); }
     }
   }
-  if (accepted.audible.length && voice.isUnlocked() && !voice.isMuted()) voice.speak(translate(accepted.audible.at(-1).text).text);
+  if (accepted.audible.length && voice.isUnlocked() && !voice.isMuted()) { const last = accepted.audible.at(-1); voice.speak(meaning(last.text, last.env).text); }
   const notice = `${state.notice}${state.remaining > 0 ? ` (${state.remaining})` : ''}`;
   if (displayedNotice !== notice) { $('device-notice').textContent = notice; displayedNotice = notice; }
   $('sensor-summary').textContent = `MPU ${state.mpu ? 'connected' : 'unavailable'} · LCD ${state.lcd ? 'connected' : 'unavailable'}`;
@@ -137,16 +147,12 @@ function receive(input) {
   });
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
-  for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Match scores']]) {
+  const motion = state.motion;
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
+  renderEnvironment(state.env);
+  for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
-  state.flexTraining.forEach((saved, i) => $('flex-training').children[i].querySelector('.count').textContent = saved ? 'Saved' : 'Not trained');
-  state.motionTraining.forEach((count, i) => $('motion-training').children[i].querySelector('.count').textContent = `${count}/3 examples`);
-  $('score-panel').hidden = !state.debug;
-  $('scores').replaceChildren();
-  if (state.debug) motionSigns.forEach(([key], i) => {
-    const score = document.createElement('span'); score.textContent = `${translate(key).text}: ${state.scores?.[i] >= 0 ? Number(state.scores[i]).toFixed(3) : '—'}`; $('scores').append(score);
-  });
   if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('ignore-middle').checked = state.ignoreMiddle; $('use-motor').checked = state.useMotor; }
   availability();
 }
@@ -195,16 +201,21 @@ function init() {
     for (const value of [name, pins[index], '—', '—', '—']) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }
     $('sensor-rows').append(row);
   });
-  for (const [list, signs, op] of [['flex-training', flexSigns, 'trainFlex'], ['motion-training', motionSigns, 'trainMotion']]) signs.forEach(([key, sign], index) => {
-    const row = document.createElement('li');
-    const copy = document.createElement('div'), title = document.createElement('span'), detail = document.createElement('small'), count = document.createElement('small');
-    title.textContent = translate(key).text; detail.textContent = sign.pattern ? `${sign.pattern} · ${sign.how}` : sign.how;
-    count.className = 'count'; count.textContent = 'Waiting for glove'; copy.append(title, detail, count);
-    const button = document.createElement('button'); button.type = 'button'; button.textContent = 'Train'; button.dataset.train = op; button.disabled = true;
-    button.onclick = () => run(op, { index }); row.append(copy, button); $(list).append(row);
-  });
+  for (const env of ENVIRONMENTS) {
+    const button = document.createElement('button'); button.type = 'button'; button.textContent = env.name;
+    button.dataset.env = env.id; button.disabled = true; button.setAttribute('aria-pressed', 'false');
+    button.onclick = () => run('env', { value: env.id });
+    $('environments').append(button);
+  }
+  for (const [key, gesture] of Object.entries(GESTURES)) {
+    const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
+    const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;
+    const said = document.createElement('span'); said.className = 'meaning';
+    const how = document.createElement('small'); how.textContent = gesture.how;
+    item.append(name, said, how); $('gesture-guide').append(item);
+  }
   for (const scenario of SCENARIOS) { const option = document.createElement('option'); option.value = scenario.id; option.textContent = scenario.name; $('scenario').append(option); }
-  renderPhrases(); renderQuickReplies('');
+  renderPhrases(); renderQuickReplies(DEFAULT_REPLIES); renderEnvironment('everyday');
   $('scenario').onchange = renderPhrases; $('phrase-search').oninput = renderPhrases;
   $('reconnect').onclick = reconnect;
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
@@ -212,7 +223,6 @@ function init() {
   $('calibrate').onclick = () => run('calibrate'); $('cancel').onclick = () => run('cancel');
   $('live').onclick = () => run('live', { value: !state.live });
   $('debug').onclick = () => run('debug', { value: !state.debug });
-  $('erase').onclick = () => { if (confirm('Erase all saved finger and motion training? You will need to train again.')) run('erase', { confirm: 'ERASE' }); };
   $('settings').oninput = () => { settingsDirty = true; };
   $('settings').onsubmit = async (event) => {
     event.preventDefault();

@@ -42,17 +42,17 @@ test('WebSocket proxy carries live state, controls and physical-delivery flags',
   }
   try {
     const initial=await waitState((state)=>state.boot==='test-boot'); assert.equal(initial.events.length,0);
-    const event=waitState((state)=>state.events.some((event)=>event.text==='HELLO'));
-    mock.sign('HELLO','motion');assert.equal((await event).events.at(-1).source,'motion');
+    const event=waitState((state)=>state.events.some((event)=>event.text==='WAVE'));
+    mock.sign('WAVE','motion');assert.equal((await event).events.at(-1).source,'motion');
     mock.state.lcd=false;
     const acknowledged=waitState((state)=>state.events.some((event)=>event.requestId==='test-reply'));
     const response=await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'reply',id:'test-reply',text:'Yes',line1:'YES',line2:'',vib:'YES'})});
     assert.equal(response.status,202);
     const reply=(await acknowledged).events.at(-1);assert.equal(reply.lcd,false);assert.equal(reply.text,'Yes');
-    const toggled=waitState((state)=>state.live===false && state.debug===true);
-    for(const [op,value] of [['live',false],['debug',true]]) await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,value})});
+    const toggled=waitState((state)=>state.live===false && state.debug===true && state.env==='hospital');
+    for(const [op,value] of [['live',false],['debug',true],['env','hospital']]) await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,value})});
     await toggled;
-    assert.deepEqual(mock.commands.map((c)=>c.op),['reply','live','debug']);
+    assert.deepEqual(mock.commands.map((c)=>c.op),['reply','live','debug','env']);
   } finally {
     client.close(); await once(client,'close'); await stop(server); await mock.stop();
   }
