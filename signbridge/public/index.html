@@ -38,6 +38,7 @@
           <rect class="palm" x="46" y="108" width="108" height="112" rx="36"/>
         </svg>
         <ul id="finger-chips" class="chips" aria-label="Bent fingers"></ul>
+        <p id="shape-mode" class="secondary small center">Waiting for glove</p>
         <div class="meter" aria-label="Hand movement">
           <div class="meter-head"><span class="secondary">Movement</span><span id="speed" class="value">—</span></div>
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
@@ -76,9 +77,15 @@
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
       <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <section class="bend-panel" aria-labelledby="learn-heading">
+        <h3 id="learn-heading">Learn hand shapes</h3>
+        <p class="secondary small">Record each shape once: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Once all four are recorded, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <ul id="shape-rows" class="shape-rows"></ul>
+        <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
+      </section>
       <section class="bend-panel" aria-labelledby="bend-heading">
         <h3 id="bend-heading">Bend triggers</h3>
-        <p class="secondary small">The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
+        <p class="secondary small">Used for hand shapes until all four are recorded above. The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
         <ul id="bend-rows" class="bend-rows"></ul>
         <div class="tools-actions"><button id="save-bend" class="primary" type="button" disabled>Save triggers</button><button id="reset-bend" type="button" disabled>Reset to defaults</button></div>
       </section>

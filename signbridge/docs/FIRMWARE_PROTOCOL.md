@@ -26,7 +26,10 @@ is no internet-facing service or external font/CDN dependency.
 Snapshots include `type: "state"`, a per-boot `boot` identifier, `uptime`, device
 health, calibration progress, `notice`, raw flex/delta/baseline arrays,
 acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
-the current `env` id, the five per-finger bend triggers `bendOn`, hardware settings, the most recent 12 conversation events,
+the current `env` id, the five per-finger bend triggers `bendOn`, `fullBend`
+(per-finger change drawn as a full bend), `shapeMode` (`triggers` or `learned`),
+`shape` (the hand shape seen right now, or empty), `shapesTrained` (four booleans),
+`recording` (shape index being recorded, or -1), hardware settings, the most recent 12 conversation events,
 and `motion` (`swings`, `rate`, `turn`, `tilt`, `energy`, `result`) for the last
 analysed movement.
 
@@ -59,6 +62,8 @@ Other commands:
 {"op":"env","value":"hospital"}
 {"op":"bend","values":[150,100,100,130,110]}
 {"op":"bend","reset":true}
+{"op":"trainShape","index":0}
+{"op":"clearShapes"}
 {"op":"live","value":false}
 {"op":"debug","value":true}
 {"op":"settings","useFlex":true,"useMotor":false}
@@ -67,7 +72,8 @@ Other commands:
 Environment ids are `everyday`, `hospital`, `market`, `restaurant` and
 `classroom`. Bend trigger values are whole numbers from 20 to 1000, in thumb,
 index, middle, ring, pinky order; a finger reads straight again below two thirds
-of its trigger. Triggers persist. Booleans and ids are validated, and settings changes are refused
+of its trigger. Triggers persist. `trainShape` indices 0–3 are fist, point, pinky up and
+index + pinky; recordings persist and learned matching starts once all four exist. Booleans and ids are validated, and settings changes are refused
 while calibration is running. HTTP 202 means queued; subsequent state
 and reply events report execution. Queue overflow returns 503.
 
@@ -77,7 +83,7 @@ Pausing serial output does not pause wireless telemetry or recognition.
 ## Serial
 
 Serial Monitor runs at 115200 baud. Commands are whole lines, separated by
-newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`,
+newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`, `t1..t4`, `tx`,
 `reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
 text is never interpreted as individual command keys.
 

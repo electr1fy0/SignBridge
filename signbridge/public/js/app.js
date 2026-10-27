@@ -26,6 +26,8 @@ function availability() {
   $('calibrate').disabled = $('recalibrate').disabled = !online || busy;
   $('save-bend').disabled = !online || !bendDirty;
   $('reset-bend').disabled = !online;
+  $('clear-shapes').disabled = !online || busy || !state?.shapesTrained?.some(Boolean);
+  for (const button of $('shape-rows').querySelectorAll('button')) button.disabled = !online || busy || !state?.calibrated || !state?.useFlex;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
@@ -84,27 +86,27 @@ function bendLabel(element, change, trigger) {
   const strong = document.createElement('strong'); strong.textContent = trigger;
   element.replaceChildren(`${change} / `, strong);
 }
-// Same rule as the firmware's handShape(): middle and ring closed, then index and pinky decide.
-function handShape(pattern) {
-  const [, index, middle, ring, pinky] = [...pattern].map((bit) => bit === '1');
-  if (!middle || !ring) return null;
-  if (index && pinky) return 'FIST';
-  if (!index && pinky) return 'POINT';
-  if (index && !pinky) return 'PINKY';
-  return 'ROCK';
-}
 function renderHand() {
   const ready = state.useFlex && state.calibrated;
-  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.fullBend[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
     const i = Number(finger.dataset.finger), bend = bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
-    finger.dataset.bent = String(ready && state.pattern[i] === '1');
+    // Learned mode colours by the finger's own recorded range, since weak sensors never reach a trigger.
+    finger.dataset.bent = String(ready && (state.shapeMode === 'learned' ? bend >= 0.6 : state.pattern[i] === '1'));
     const chip = $('finger-chips').children[i];
     chip.dataset.bent = finger.dataset.bent;
   }
-  const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  const shape = ready && state.shape ? state.shape : null, learned = state.shapeMode === 'learned';
+  $('hand-shape').textContent = state.job ? (state.recording >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  const recorded = state.shapesTrained.filter(Boolean).length;
+  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of 4 shapes recorded`;
+  [...$('shape-rows').children].forEach((row, i) => {
+    const status = row.querySelector('.state');
+    status.textContent = state.recording === i ? 'Recording…' : state.shapesTrained[i] ? 'Recorded' : 'Not recorded';
+    status.dataset.done = String(Boolean(state.shapesTrained[i]));
+    row.querySelector('button').textContent = state.shapesTrained[i] ? 'Record again' : 'Record';
+  });
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
     const live = row.querySelector('.bend-live'), input = row.querySelector('input');
@@ -254,6 +256,13 @@ function init() {
     button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
+  Object.entries(GESTURES).filter(([, gesture]) => gesture.kind === 'shape').forEach(([key, gesture], index) => {
+    const row = document.createElement('li'), copy = document.createElement('div'), title = document.createElement('span');
+    const how = document.createElement('small'), status = document.createElement('span'), button = document.createElement('button');
+    title.textContent = gesture.name; how.textContent = gesture.how; status.className = 'state'; status.textContent = 'Waiting for glove';
+    button.type = 'button'; button.textContent = 'Record'; button.disabled = true; button.onclick = () => run('trainShape', { index });
+    copy.append(title, how); row.dataset.shape = key; row.append(copy, status, button); $('shape-rows').append(row);
+  });
   for (const name of fingerNames) {
     const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip);
     const row = document.createElement('li'), label = document.createElement('span'), track = document.createElement('div');
@@ -278,6 +287,7 @@ function init() {
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
     try { await command('bend', { values: [...$('bend-rows').querySelectorAll('input')].map((input) => Number(input.value)) }); bendDirty = false; availability(); }
     catch (error) { feedback(error.message, true); }

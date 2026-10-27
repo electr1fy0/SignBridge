@@ -98,6 +98,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); }
 #motion-summary { margin-top: 10px; }
 
+.center { text-align: center; margin: -8px 0 16px; }
+.shape-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
+.shape-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+.shape-rows small { display: block; color: var(--secondary); font-size: 13px; }
+.shape-rows .state { font-size: 13px; color: var(--secondary); }
+.shape-rows .state[data-done="true"] { color: var(--green); }
 .hand-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--separator); }
 
 /* Reply */

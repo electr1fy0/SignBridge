@@ -148,6 +148,12 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 .mark { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--card); }
 #motion-summary { margin-top: 10px; }
 
+.center { text-align: center; margin: -8px 0 16px; }
+.shape-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
+.shape-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
+.shape-rows small { display: block; color: var(--secondary); font-size: 13px; }
+.shape-rows .state { font-size: 13px; color: var(--secondary); }
+.shape-rows .state[data-done="true"] { color: var(--green); }
 .hand-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--separator); }
 
 /* Reply */
@@ -273,6 +279,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
           <rect class="palm" x="46" y="108" width="108" height="112" rx="36"/>
         </svg>
         <ul id="finger-chips" class="chips" aria-label="Bent fingers"></ul>
+        <p id="shape-mode" class="secondary small center">Waiting for glove</p>
         <div class="meter" aria-label="Hand movement">
           <div class="meter-head"><span class="secondary">Movement</span><span id="speed" class="value">—</span></div>
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
@@ -311,9 +318,15 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
       <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <section class="bend-panel" aria-labelledby="learn-heading">
+        <h3 id="learn-heading">Learn hand shapes</h3>
+        <p class="secondary small">Record each shape once: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Once all four are recorded, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <ul id="shape-rows" class="shape-rows"></ul>
+        <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
+      </section>
       <section class="bend-panel" aria-labelledby="bend-heading">
         <h3 id="bend-heading">Bend triggers</h3>
-        <p class="secondary small">The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
+        <p class="secondary small">Used for hand shapes until all four are recorded above. The bar is each finger’s live change from calibration; drag the handle to where it should count as bent. Lower triggers more easily. A finger reads straight again below two thirds of its trigger.</p>
         <ul id="bend-rows" class="bend-rows"></ul>
         <div class="tools-actions"><button id="save-bend" class="primary" type="button" disabled>Save triggers</button><button id="reset-bend" type="button" disabled>Reset to defaults</button></div>
       </section>
@@ -779,7 +792,7 @@ class TextToSpeechManager {
 // State validation and replay handling shared by the live UI and tests.
 function validateState(state) {
   if (!state || state.type !== 'state' || typeof state.boot !== 'string' || !Number.isFinite(state.uptime)) throw new Error('This address is not running SignBridge firmware.');
-  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5]]) {
+  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5], ['fullBend', 5], ['shapesTrained', 4]]) {
     if (!Array.isArray(state[key]) || state[key].length !== length) throw new Error(`Incomplete device data: ${key}`);
   }
   if (typeof state.env !== 'string') throw new Error('Incomplete device data: env');
@@ -823,6 +836,8 @@ function availability() {
   $('calibrate').disabled = $('recalibrate').disabled = !online || busy;
   $('save-bend').disabled = !online || !bendDirty;
   $('reset-bend').disabled = !online;
+  $('clear-shapes').disabled = !online || busy || !state?.shapesTrained?.some(Boolean);
+  for (const button of $('shape-rows').querySelectorAll('button')) button.disabled = !online || busy || !state?.calibrated || !state?.useFlex;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
@@ -881,27 +896,27 @@ function bendLabel(element, change, trigger) {
   const strong = document.createElement('strong'); strong.textContent = trigger;
   element.replaceChildren(`${change} / `, strong);
 }
-// Same rule as the firmware's handShape(): middle and ring closed, then index and pinky decide.
-function handShape(pattern) {
-  const [, index, middle, ring, pinky] = [...pattern].map((bit) => bit === '1');
-  if (!middle || !ring) return null;
-  if (index && pinky) return 'FIST';
-  if (!index && pinky) return 'POINT';
-  if (index && !pinky) return 'PINKY';
-  return 'ROCK';
-}
 function renderHand() {
   const ready = state.useFlex && state.calibrated;
-  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.bendOn[i])) : 0);
+  const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.fullBend[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
     const i = Number(finger.dataset.finger), bend = bendOf(i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
-    finger.dataset.bent = String(ready && state.pattern[i] === '1');
+    // Learned mode colours by the finger's own recorded range, since weak sensors never reach a trigger.
+    finger.dataset.bent = String(ready && (state.shapeMode === 'learned' ? bend >= 0.6 : state.pattern[i] === '1'));
     const chip = $('finger-chips').children[i];
     chip.dataset.bent = finger.dataset.bent;
   }
-  const shape = ready ? handShape(state.pattern) : null;
-  $('hand-shape').textContent = state.job ? 'Calibrating…' : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  const shape = ready && state.shape ? state.shape : null, learned = state.shapeMode === 'learned';
+  $('hand-shape').textContent = state.job ? (state.recording >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  const recorded = state.shapesTrained.filter(Boolean).length;
+  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of 4 shapes recorded`;
+  [...$('shape-rows').children].forEach((row, i) => {
+    const status = row.querySelector('.state');
+    status.textContent = state.recording === i ? 'Recording…' : state.shapesTrained[i] ? 'Recorded' : 'Not recorded';
+    status.dataset.done = String(Boolean(state.shapesTrained[i]));
+    row.querySelector('button').textContent = state.shapesTrained[i] ? 'Record again' : 'Record';
+  });
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
     const live = row.querySelector('.bend-live'), input = row.querySelector('input');
@@ -1051,6 +1066,13 @@ function init() {
     button.onclick = () => { renderEnvironment(env.id); if (online) { requestedEnv = { id: env.id, at: Date.now() }; run('env', { value: env.id }); } };
     $('environments').append(button);
   }
+  Object.entries(GESTURES).filter(([, gesture]) => gesture.kind === 'shape').forEach(([key, gesture], index) => {
+    const row = document.createElement('li'), copy = document.createElement('div'), title = document.createElement('span');
+    const how = document.createElement('small'), status = document.createElement('span'), button = document.createElement('button');
+    title.textContent = gesture.name; how.textContent = gesture.how; status.className = 'state'; status.textContent = 'Waiting for glove';
+    button.type = 'button'; button.textContent = 'Record'; button.disabled = true; button.onclick = () => run('trainShape', { index });
+    copy.append(title, how); row.dataset.shape = key; row.append(copy, status, button); $('shape-rows').append(row);
+  });
   for (const name of fingerNames) {
     const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip);
     const row = document.createElement('li'), label = document.createElement('span'), track = document.createElement('div');
@@ -1075,6 +1097,7 @@ function init() {
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
     try { await command('bend', { values: [...$('bend-rows').querySelectorAll('input')].map((input) => Number(input.value)) }); bendDirty = false; availability(); }
     catch (error) { feedback(error.message, true); }
@@ -1149,6 +1172,12 @@ constexpr float FLIP_TILT = 70, FLIP_TURN = 120, SHAKE_ENERGY = 150, SHAKE_RATE 
 constexpr int SHAKE_SWINGS = 5, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
 // A movement ends once the hand has been still this many samples (after a minimum length).
 constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
+// Learned shapes: each recording is 2 s of flex samples; live matching uses the mean of the
+// last 4 samples (400 ms). SIGMA_MIN keeps a very steady finger from dominating the match.
+constexpr int SHAPE_N = 4, TRAIN_SAMPLES = 20, AVG_N = 4;
+constexpr float SIGMA_MIN = 6;
+constexpr uint32_t SHAPE_MAGIC = 0x53484150;
+static_assert(G_FIST == 0 && G_ROCK == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
 constexpr int MOTOR_PIN = 26;
 TwoWire lcdWire(1);
 Preferences prefs;
@@ -1175,6 +1204,14 @@ bool capturing = false, motionArmed = false;
 uint32_t restSince = 0, cooldownAt = 0;
 int shapeCandidate = -1, heldShape = -1, lastGesture = -1;
 uint32_t candidateAt = 0;
+// Mean and variance of each finger's signed change from calibration, per recorded shape.
+struct ShapeModel { uint32_t magic; uint8_t trained[SHAPE_N]; float mean[SHAPE_N][5], var[SHAPE_N][5]; };
+ShapeModel model = {SHAPE_MAGIC};
+float openVar[5] = {}, trainSums[5] = {}, trainSq[5] = {};
+double flexSq[5] = {};  // double: squared 12-bit readings summed over calibration
+float recent[AVG_N][5] = {};
+int recentIndex = 0, recentCount = 0, shapeTrainIndex = -1, liveShape = -1;
+float shapeDistance = 0;
 struct MotionInfo { int swings; float rate, turn, tilt, energy; int result; } lastMotion = {0, 0, 0, 0, 0, -1};
 uint32_t lastSample = 0, lastFlexSample = 0, lastSerial = 0, lastPublish = 0, lastRetry = 0, lastLCD = 0;
 char notice[160] = "Starting";
@@ -1200,7 +1237,7 @@ struct Command {
   bool value, flex, motor, reset;
   int bend[5];
 };
-enum class Job { Idle, CalPrep, CalSample };
+enum class Job { Idle, CalPrep, CalSample, ShapePrep, ShapeSample };
 Job job = Job::Idle;
 int sampleCount = 0, imuSamples = 0;
 uint32_t jobAt = 0;
@@ -1265,7 +1302,9 @@ void readFlex() {
     if (!bent[i] && delta[i] >= bendOn[i]) bent[i] = true;
     else if (bent[i] && delta[i] <= bendOn[i] * 2 / 3) bent[i] = false;
     if (bent[i]) mask |= 1 << i;
+    recent[recentIndex][i] = filtered[i] - baseline[i];
   }
+  recentIndex = (recentIndex + 1) % AVG_N; recentCount = min(recentCount + 1, AVG_N);
 }
 // Index, middle, ring and pinky decide a hand shape; the thumb is not used.
 // Middle and ring must both be closed, so a relaxed half-open hand is never a shape.
@@ -1277,6 +1316,33 @@ int handShape() {
   if (i && !p) return G_PINKY;
   return G_ROCK;
 }
+bool learnedReady() {
+  for (int c = 0; c < SHAPE_N; ++c) if (!model.trained[c]) return false;
+  return true;
+}
+// Nearest recorded shape, with the straight calibrated hand as the "no shape" class.
+// Each finger is scaled by its pooled spread, so a sensor that changes only a little but
+// consistently still counts, while a jittery one counts for less.
+int learnedShape() {
+  if (!recentCount) return -1;
+  float x[5] = {}, sigma[5];
+  for (int n = 0; n < recentCount; ++n) for (int i = 0; i < 5; ++i) x[i] += recent[n][i] / recentCount;
+  for (int i = 0; i < 5; ++i) {
+    float v = openVar[i];
+    for (int c = 0; c < SHAPE_N; ++c) v += model.var[c][i];
+    sigma[i] = max(SIGMA_MIN, sqrtf(v / (SHAPE_N + 1)));
+  }
+  float best = 0; int bestShape = -1;
+  for (int i = 0; i < 5; ++i) best += sq(x[i] / sigma[i]);
+  for (int c = 0; c < SHAPE_N; ++c) {
+    float d = 0;
+    for (int i = 0; i < 5; ++i) d += sq((x[i] - model.mean[c][i]) / sigma[i]);
+    if (d < best) { best = d; bestShape = c; }
+  }
+  shapeDistance = sqrtf(best);
+  return bestShape;
+}
+int currentShape() { return learnedReady() ? learnedShape() : handShape(); }
 void lcdExpander(uint8_t data) {
   lcdWire.beginTransmission(lcdAddress); lcdWire.write(data | 0x08);
   if (lcdWire.endTransmission() != 0) lcdError = true;
@@ -1330,6 +1396,9 @@ void updateLCD() {
   uint32_t now = millis();
   if (replyActive && now - replyAt < 10000) {
     memcpy(lines, replyLines, sizeof(lines));
+  } else if (job == Job::ShapePrep || job == Job::ShapeSample) {
+    snprintf(lines[0], 17, "RECORD %s", shapeTrainIndex >= 0 ? gestureNames[shapeTrainIndex] : "");
+    strlcpy(lines[1], job == Job::ShapePrep ? "GET READY" : "HOLD STILL", 17);
   } else if (job != Job::Idle) {
     strlcpy(lines[0], "HAND FLAT", 17); strlcpy(lines[1], "KEEP STILL", 17);
   } else if (lastGesture >= 0 && now - lastSignAt < 4000) {
@@ -1389,6 +1458,11 @@ void loadSettings() {
   bool valid = prefs.getBytesLength("bendOn") == sizeof(saved) && prefs.getBytes("bendOn", saved, sizeof(saved)) == sizeof(saved);
   for (int i = 0; valid && i < 5; ++i) valid = saved[i] >= BEND_MIN && saved[i] <= BEND_MAX;
   memcpy(bendOn, valid ? saved : DEFAULT_BEND_ON, sizeof(bendOn));
+  ShapeModel stored = {};
+  bool shapesValid = prefs.getBytesLength("shapes") == sizeof(stored) && prefs.getBytes("shapes", &stored, sizeof(stored)) == sizeof(stored) && stored.magic == SHAPE_MAGIC;
+  for (int c = 0; shapesValid && c < SHAPE_N; ++c) for (int i = 0; i < 5; ++i)
+    shapesValid = isfinite(stored.mean[c][i]) && isfinite(stored.var[c][i]) && stored.var[c][i] >= 0;
+  if (shapesValid) model = stored;
   if (env >= ENV_N) env = 0;
 }
 void setEnvironment(int index) {
@@ -1399,11 +1473,24 @@ void setEnvironment(int index) {
 }
 void startCalibration() {
   resetRecognition(); job = Job::CalPrep; jobAt = millis(); sampleCount = imuSamples = 0;
-  memset(flexSums, 0, sizeof(flexSums)); memset(gyroSums, 0, sizeof(gyroSums)); maxCalibrationGyro = 0;
+  memset(flexSums, 0, sizeof(flexSums)); memset(flexSq, 0, sizeof(flexSq)); memset(gyroSums, 0, sizeof(gyroSums)); maxCalibrationGyro = 0;
   setNotice("Calibration: keep fingers straight and hand flat and still. Sampling starts in 2 seconds.");
 }
 void finishJob(const char* text) {
-  job = Job::Idle; resetRecognition(); setNotice(text);
+  job = Job::Idle; shapeTrainIndex = -1; resetRecognition(); setNotice(text);
+}
+void startShapeTraining(int index) {
+  if (job != Job::Idle) { setNotice("Finish or cancel the current task first."); return; }
+  if (!useFlex || !flexReady) { setNotice("Enable and calibrate the flex sensors before recording shapes."); return; }
+  resetRecognition(); shapeTrainIndex = index; job = Job::ShapePrep; jobAt = millis(); sampleCount = 0;
+  memset(trainSums, 0, sizeof(trainSums)); memset(trainSq, 0, sizeof(trainSq));
+  char message[160];
+  snprintf(message, sizeof(message), "Recording %s: make the shape and keep holding it. Recording starts in 3 seconds.", gestureNames[index]);
+  setNotice(message);
+}
+void clearShapes() {
+  model = {SHAPE_MAGIC}; prefs.putBytes("shapes", &model, sizeof(model));
+  setNotice("Recorded shapes cleared. Hand shapes use the bend triggers again.");
 }
 void beginCapture() {
   captureIndex = quietSamples = 0;
@@ -1447,7 +1534,7 @@ int classifyMotion(MotionInfo& m) {
   m.rate = swings * 1000.0f / (moving * SAMPLE_MS);
   if (swings >= SHAKE_SWINGS && m.rate >= SHAKE_RATE && m.energy >= SHAKE_ENERGY) return G_SHAKE;
   // A flex shape at the end means the hand was moving into a sign, not making a motion.
-  if (useFlex && flexReady && handShape() >= 0) return -1;
+  if (useFlex && flexReady && currentShape() >= 0) return -1;
   if (swings <= 1 && (m.tilt >= FLIP_TILT || m.turn >= FLIP_TURN)) return G_FLIP;
   if (swings >= 2) return G_WAVE;
   if (swings == 1) return G_NOD;
@@ -1472,7 +1559,7 @@ void tickJob(bool flexSampled) {
       break;
     case Job::CalSample:
       if (flexSampled) {
-        for (int i = 0; i < 5; ++i) flexSums[i] += raw[i];
+        for (int i = 0; i < 5; ++i) { flexSums[i] += raw[i]; flexSq[i] += double(raw[i]) * raw[i]; }
         ++sampleCount;
       }
       if (mpuOK) {
@@ -1481,10 +1568,34 @@ void tickJob(bool flexSampled) {
       }
       if (sampleCount >= 60) {
         if (imuSamples >= 30 && maxCalibrationGyro > 45) { finishJob("Calibration rejected: hand moved. Recalibrate while still."); break; }
-        for (int i = 0; i < 5; ++i) { baseline[i] = filtered[i] = flexSums[i]/sampleCount; delta[i] = 0; bent[i] = false; }
-        mask = 0; flexReady = true;
+        for (int i = 0; i < 5; ++i) {
+          baseline[i] = filtered[i] = flexSums[i]/sampleCount; delta[i] = 0; bent[i] = false;
+          openVar[i] = max(0.0f, float(flexSq[i]/sampleCount - double(baseline[i])*baseline[i]));
+        }
+        mask = 0; flexReady = true; recentCount = 0;
         if (imuSamples >= 30) { for (int k = 0; k < 3; ++k) gyroBias[k] = gyroSums[k]/imuSamples; imuReady = true; }
         finishJob(imuReady && mpuOK ? "Calibration complete. Show a gesture." : "Flex calibrated. MPU unavailable; check wiring, then recalibrate for motion.");
+      }
+      break;
+    case Job::ShapePrep:
+      if (now - jobAt >= 3000) { job = Job::ShapeSample; setNotice("Recording: hold the shape steady for 2 seconds."); }
+      break;
+    case Job::ShapeSample:
+      if (!flexSampled) break;
+      for (int i = 0; i < 5; ++i) { float v = filtered[i] - baseline[i]; trainSums[i] += v; trainSq[i] += v * v; }
+      if (++sampleCount >= TRAIN_SAMPLES) {
+        int c = shapeTrainIndex, trained = 0;
+        for (int i = 0; i < 5; ++i) {
+          model.mean[c][i] = trainSums[i] / sampleCount;
+          model.var[c][i] = max(0.0f, trainSq[i] / sampleCount - sq(model.mean[c][i]));
+        }
+        model.trained[c] = 1;
+        for (int g = 0; g < SHAPE_N; ++g) trained += model.trained[g];
+        bool saved = prefs.putBytes("shapes", &model, sizeof(model)) == sizeof(model);
+        char message[160];
+        snprintf(message, sizeof(message), "%s recorded%s. %d of %d shapes recorded%s", gestureNames[c], saved ? "" : " (flash save failed)",
+          trained, SHAPE_N, trained == SHAPE_N ? "; learned detection is on." : ".");
+        finishJob(message);
       }
       break;
     default: break;
@@ -1501,7 +1612,8 @@ void tickRecognition() {
   }
   if (job != Job::Idle) return;
   float speed = mpuOK ? magnitude(gyr) : 0;
-  int shape = useFlex && flexReady && speed < STILL_SPEED ? handShape() : -1;
+  liveShape = useFlex && flexReady ? currentShape() : -1;
+  int shape = speed < STILL_SPEED ? liveShape : -1;
   if (shape != shapeCandidate) { shapeCandidate = shape; candidateAt = now; heldShape = -1; }
   if (shape >= 0 && heldShape != shape && now - candidateAt >= HOLD_MS) { heldShape = shape; showGesture(shape, "flex"); }
   if (!mpuOK || !imuReady) { restSince = 0; motionArmed = false; return; }
@@ -1524,6 +1636,7 @@ void printReadings() {
 }
 void printStatus() {
   Serial.printf("Environment: %s (e1..e%d to switch)\n", envIds[env], ENV_N);
+  Serial.printf("Hand shapes: %s (t1..t4 record, tx clear)\n", learnedReady() ? "learned from recordings" : "bend triggers");
   for (int g = 0; g < GESTURE_N; ++g) Serial.printf("%-6s -> %s %s\n", gestureNames[g], phraseLcd[env][g][0], phraseLcd[env][g][1]);
   Serial.printf("Wi-Fi %s / %s; http://192.168.4.1\n", AP_SSID, AP_PASSWORD);
 }
@@ -1535,7 +1648,9 @@ void execute(const Command& c) {
     addEvent("reply", c.text, "partner", c.id, displayed, useMotor);
     Serial.printf("ACK|%s|LCD=%s\n", c.id, displayed ? "OK" : "FAIL");
     setNotice(displayed ? "Reply written to the LCD." : "Reply received; LCD unavailable. Check its wiring.");
-  } else if (!strcmp(c.op, "calibrate")) {
+  } else if (!strcmp(c.op, "trainShape")) startShapeTraining(c.index);
+  else if (!strcmp(c.op, "clearShapes")) { if (job == Job::Idle) clearShapes(); else setNotice("Finish or cancel the current task first."); }
+  else if (!strcmp(c.op, "calibrate")) {
     if (job == Job::Idle) startCalibration(); else setNotice("Finish or cancel the current task first.");
   } else if (!strcmp(c.op, "env")) setEnvironment(c.index);
   else if (!strcmp(c.op, "cancel")) finishJob("Task cancelled. Previous calibration retained.");
@@ -1565,11 +1680,13 @@ void serialInput() {
       if (!strcmp(line, "p")) { strlcpy(c.op, "live", sizeof(c.op)); c.value = !liveOutput; }
       else if (!strcmp(line, "d")) { strlcpy(c.op, "debug", sizeof(c.op)); c.value = !debugOn; }
       else if (!strcmp(line, "c")) strlcpy(c.op, "calibrate", sizeof(c.op));
+      else if (strlen(line) == 2 && line[0] == 't' && line[1] >= '1' && line[1] < '1' + SHAPE_N) { strlcpy(c.op,"trainShape",sizeof(c.op)); c.index = line[1]-'1'; }
+      else if (!strcmp(line, "tx")) strlcpy(c.op, "clearShapes", sizeof(c.op));
       else if (!strcmp(line, "q")) strlcpy(c.op, "cancel", sizeof(c.op));
       else if (!strcmp(line, "s")) strlcpy(c.op, "status", sizeof(c.op));
       else if (strlen(line) == 2 && line[0] == 'e' && line[1] >= '1' && line[1] < '1' + ENV_N) { strlcpy(c.op,"env",sizeof(c.op)); c.index = line[1]-'1'; }
       else if (!strncmp(line, "reply ", 6)) { strlcpy(c.op,"reply",sizeof(c.op)); strlcpy(c.text,line+6,sizeof(c.text)); strlcpy(c.id,"serial",sizeof(c.id)); strlcpy(c.vib,"MSG",sizeof(c.vib)); }
-      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, e1..e5 environment, q cancel, reply TEXT"); continue; }
+      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, e1..e5 environment, t1..t4 record shape, tx clear shapes, q cancel, reply TEXT"); continue; }
       execute(c);
     } else if (!overflow) {
       if (used < sizeof(line)-1) line[used++] = ch; else overflow = true;
@@ -1592,12 +1709,26 @@ void publishState() {
   cJSON_AddStringToObject(root, "type", "state"); cJSON_AddStringToObject(root, "boot", bootId);
   cJSON_AddNumberToObject(root,"uptime",millis()); cJSON_AddNumberToObject(root,"heap",ESP.getFreeHeap());
   cJSON_AddStringToObject(root,"notice",notice); cJSON_AddNumberToObject(root,"job",int(job));
-  cJSON_AddNumberToObject(root,"remaining", job == Job::CalPrep ? max(0, 2-int((millis()-jobAt)/1000)) : 0);
+  cJSON_AddNumberToObject(root,"remaining", job == Job::CalPrep ? max(0, 2-int((millis()-jobAt)/1000)) : job == Job::ShapePrep ? max(0, 3-int((millis()-jobAt)/1000)) : 0);
   jsonBool(root,"mpu",mpuOK); jsonBool(root,"lcd",lcdOK && !lcdError);
   jsonBool(root,"calibrated",flexReady); jsonBool(root,"imuCalibrated",imuReady);
   jsonBool(root,"live",liveOutput); jsonBool(root,"debug",debugOn);
   jsonBool(root,"useFlex",useFlex); jsonBool(root,"useMotor",useMotor);
   addInts(root,"bendOn",bendOn,5);
+  cJSON_AddStringToObject(root,"shapeMode",learnedReady() ? "learned" : "triggers");
+  cJSON_AddStringToObject(root,"shape",liveShape >= 0 ? gestureNames[liveShape] : "");
+  cJSON_AddNumberToObject(root,"recording",shapeTrainIndex);
+  // Change that counts as a full bend for the website's hand drawing: the largest recorded
+  // change per finger once shapes are learned, otherwise the bend trigger.
+  int fullBend[5];
+  for(int i=0;i<5;++i) {
+    float largest = 0;
+    for(int c=0;c<SHAPE_N;++c) largest = max(largest, fabsf(model.mean[c][i]));
+    fullBend[i] = learnedReady() ? max(20, int(largest)) : bendOn[i];
+  }
+  addInts(root,"fullBend",fullBend,5);
+  cJSON* shapes = cJSON_AddArrayToObject(root,"shapesTrained");
+  for(int c=0;c<SHAPE_N;++c) cJSON_AddItemToArray(shapes,cJSON_CreateBool(model.trained[c]));
   cJSON_AddStringToObject(root,"env",envIds[env]);
   cJSON_AddStringToObject(root,"ip",WiFi.softAPIP().toString().c_str());
   cJSON_AddStringToObject(root,"stationIp",WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
@@ -1679,6 +1810,10 @@ esp_err_t commandHandler(httpd_req_t* req) {
     const char* a=jsonString(root,"line1"), *b=jsonString(root,"line2");
     valid &= printable(a,16) && printable(b,16);
     strlcpy(c.text,text,sizeof(c.text)); strlcpy(c.vib,vib,sizeof(c.vib)); strlcpy(c.lines[0],a,17); strlcpy(c.lines[1],b,17);
+  } else if(!strcmp(op,"trainShape")) {
+    cJSON* index=cJSON_GetObjectItemCaseSensitive(root,"index");
+    valid &= cJSON_IsNumber(index) && index->valuedouble==index->valueint && index->valueint>=0 && index->valueint<SHAPE_N;
+    c.index=cJSON_IsNumber(index) ? index->valueint : -1;
   } else if(!strcmp(op,"bend")) {
     cJSON* reset=cJSON_GetObjectItemCaseSensitive(root,"reset"), *values=cJSON_GetObjectItemCaseSensitive(root,"values");
     c.reset=cJSON_IsTrue(reset);
@@ -1700,7 +1835,7 @@ esp_err_t commandHandler(httpd_req_t* req) {
     cJSON* flex=cJSON_GetObjectItemCaseSensitive(root,"useFlex"), *motor=cJSON_GetObjectItemCaseSensitive(root,"useMotor");
     valid &= cJSON_IsBool(flex) && cJSON_IsBool(motor);
     c.flex=cJSON_IsTrue(flex); c.motor=cJSON_IsTrue(motor);
-  } else if(strcmp(op,"calibrate") && strcmp(op,"cancel") && strcmp(op,"status")) valid=false;
+  } else if(strcmp(op,"calibrate") && strcmp(op,"cancel") && strcmp(op,"status") && strcmp(op,"clearShapes")) valid=false;
   cJSON_Delete(root);
   if(!valid) { httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Invalid command or fields"); return ESP_OK; }
   if(xQueueSend(commandQueue,&c,0)!=pdTRUE) {

@@ -54,8 +54,8 @@ disabled; enable it only when the driver is connected. Hardware settings persist
 
 ## Gestures and environments
 
-There is no gesture training. Eight easy gestures are recognized by fixed,
-deliberately permissive rules, and the environment chosen on the website
+Eight easy gestures are recognized by deliberately permissive rules (hand
+shapes can optionally be learned from your own recordings, below), and the environment chosen on the website
 decides what each one means. The firmware sends the gesture and environment;
 the LCD and website show the phrase.
 
@@ -86,6 +86,14 @@ the LCD and website show the phrase.
 - **Calibration** runs at every startup and records the straight-hand flex
   readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
   card, or `c` over serial) after putting the glove on again.
+- **Learned hand shapes** (Device tools → Learn hand shapes, or `t1`…`t4` over
+  serial) suit weak sensors. Record each of the four shapes once: 3-second
+  countdown, then 2 seconds of holding it. When all four are recorded, the glove
+  picks whichever recording (or the straight calibrated hand) is closest to the
+  last 400 ms of readings. Each finger is weighted by how steady it was, so a
+  sensor that changes only a little but consistently still separates shapes.
+  Recordings are saved and survive recalibration; **Clear recordings** (`tx`)
+  goes back to bend triggers.
 - **Bend triggers** are set per finger under Device tools → Bend triggers: each
   finger's live bend is shown against a draggable trigger. They are saved on the
   glove. Motion thresholds are constants near the top of the `sb` namespace
@@ -107,6 +115,8 @@ Live readings start ON; motion details start OFF.
 | `c` | Calibrate straight fingers and the still MPU |
 | `s` | Show the environment, gesture meanings and Wi-Fi information |
 | `e1` … `e5` | Switch environment: everyday, hospital, market, restaurant, classroom |
+| `t1` … `t4` | Record fist, point, pinky up, index + pinky for learned shapes |
+| `tx` | Clear recorded shapes and use bend triggers again |
 | `q` | Cancel calibration |
 | `reply Hello` | Write a reply to the physical LCD |
 | `?` | Print command help |
