@@ -99,7 +99,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 #motion-summary { margin-top: 10px; }
 
 .center { text-align: center; margin: -8px 0 16px; }
-.hand .finger[data-unused="true"], .chips li[data-unused="true"], .bend-rows li[data-unused="true"] { opacity: .35; }
+.hand .finger[data-unused="true"], .chips li[data-unused="true"] { opacity: .35; }
+.bend-rows li > span:first-child small { display: block; font-size: 11px; color: var(--secondary); }
 .shape-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
 .shape-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
 .shape-rows small { display: block; color: var(--secondary); font-size: 13px; }
@@ -143,6 +144,13 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .gesture-grid .name { font-size: 13px; font-weight: 600; color: var(--secondary); display: flex; justify-content: space-between; }
 .gesture-grid .name::after { content: "Shape"; font-weight: 500; }
 .gesture-grid li[data-kind="motion"] .name::after { content: "Motion"; }
+.gesture-grid li[data-kind="combo"] .name::after { content: "Combo"; }
+.gesture-grid li[data-unavailable="true"] { opacity: .55; }
+.gesture-grid .note { color: var(--accent); }
+.gesture-grid .note:empty { display: none; }
+.composer-actions { display: flex; align-items: center; gap: 8px; }
+#dictate { display: inline-flex; align-items: center; gap: 6px; }
+#dictate[aria-pressed="true"] { background: var(--red); color: #fff; }
 .gesture-grid .meaning { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
 .gesture-grid small { font-size: 13px; color: var(--secondary); }
 

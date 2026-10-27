@@ -3,12 +3,13 @@ import { GENERIC, SCENARIOS } from './phrases.js';
 import { formatLcd, vibFor, makeUid } from './protocol.js';
 import { TextToSpeechManager } from './tts.js';
 import { validateState, consumeEvents, replyDelivery } from './device.js';
+import { dictationSupport, dictationMessage } from './dictation.js';
 
 const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
+let dictation = null, lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
@@ -69,7 +70,7 @@ function showTranslation(event) {
   lastTranslation = translation.text;
   $('translation').textContent = translation.text;
   $('translation').dataset.urgent = String(translation.urgent);
-  $('sign-detail').textContent = `${translation.gesture} · ${translation.env} · ${event.source === 'flex' ? 'hand shape' : 'motion'}`;
+  $('sign-detail').textContent = `${translation.gesture} · ${translation.env} · ${{ flex: 'hand shape', combo: 'hand shape + palm up', motion: 'motion' }[event.source] ?? event.source}`;
   $('replay').disabled = !voice.isSupported();
   renderQuickReplies(translation.replies);
   const card = $('gesture-guide').querySelector(`[data-gesture="${translation.key}"]`);
@@ -103,9 +104,18 @@ function renderHand() {
     finger.dataset.unused = chip.dataset.unused = String(UNUSED_FINGERS.includes(i));
   }
   const shape = ready && state.shape ? state.shape : null, learned = state.shapeMode === 'learned';
-  $('hand-shape').textContent = state.job ? (state.recording >= 0 || state.recordingMotion >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? GESTURES[shape]?.name ?? shape : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? (state.recording >= 0 || state.recordingMotion >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? `${GESTURES[shape]?.name ?? shape}${state.palmUp ? ' · palm up' : ''}` : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
   const recorded = state.shapesTrained.filter(Boolean).length;
-  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of 4 shapes recorded`;
+  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of ${state.shapesTrained.length} shapes recorded`;
+  // In learned mode a shape exists only once it has a recording; combos need their base shape.
+  const shapeKeys = Object.keys(GESTURES).filter((key) => GESTURES[key].kind === 'shape');
+  const comboBase = { GIVE: 'FIST', PROMISE: 'PINKY' };
+  for (const item of $('gesture-guide').children) {
+    const base = comboBase[item.dataset.gesture] ?? item.dataset.gesture, slot = shapeKeys.indexOf(base);
+    const unavailable = learned && slot >= 0 && !state.shapesTrained[slot];
+    item.dataset.unavailable = String(unavailable);
+    item.querySelector('.note').textContent = unavailable ? `Record ${GESTURES[base].name} in Device tools to use this` : '';
+  }
   [...$('motion-rows').children].forEach((row, i) => {
     const status = row.querySelector('.state'), count = state.motionsTrained[i];
     status.textContent = state.recordingMotion === i ? 'Recording…' : `${count} of 3 recorded`;
@@ -114,7 +124,7 @@ function renderHand() {
   });
   [...$('shape-rows').children].forEach((row, i) => {
     const status = row.querySelector('.state'), count = state.shapesTrained[i];
-    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded`;
+    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded${learned && !count ? ' · record to use' : ''}`;
     status.dataset.done = String(count > 0);
     row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
@@ -256,6 +266,26 @@ function renderPhrases() {
     $('phrase-list').append(button);
   }
 }
+function setDictating(on) {
+  $('dictate').setAttribute('aria-pressed', String(on));
+  $('dictate').lastChild.textContent = on ? ' Listening…' : ' Speak';
+}
+// Speech fills the reply box for review; it is never sent without pressing Send.
+function toggleDictation() {
+  if (dictation) { dictation.stop(); return; }
+  const { Recognition, secure } = dictationSupport(window);
+  if (!Recognition) return feedback(dictationMessage('unsupported'), true);
+  const recognition = new Recognition(), before = $('reply-text').value.trim();
+  Object.assign(recognition, { lang: navigator.language || 'en-IN', interimResults: true, continuous: false, maxAlternatives: 1 });
+  recognition.onresult = (event) => {
+    const heard = [...event.results].map((result) => result[0].transcript).join('').trim();
+    $('reply-text').value = `${before}${before && heard ? ' ' : ''}${heard}`.slice(0, 160); preview();
+  };
+  recognition.onerror = (event) => feedback(dictationMessage(event.error === 'not-allowed' && !secure ? 'insecure' : event.error), true);
+  recognition.onend = () => { dictation = null; setDictating(false); };
+  try { recognition.start(); dictation = recognition; setDictating(true); feedback('Listening… speak the reply, then check it and press Send.'); }
+  catch { feedback(dictationMessage(secure ? 'other' : 'insecure'), true); }
+}
 function init() {
   fingerNames.forEach((name, index) => {
     const row = document.createElement('tr');
@@ -292,14 +322,16 @@ function init() {
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
     track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
-    row.dataset.unused = String(UNUSED_FINGERS.includes(fingerNames.indexOf(name)));
+    // Index and middle stay fully visible here so their live readings can be shown; gestures just ignore them.
+    if (UNUSED_FINGERS.includes(fingerNames.indexOf(name))) { const note = document.createElement('small'); note.textContent = 'not used'; label.append(note); }
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;
     const said = document.createElement('span'); said.className = 'meaning';
     const how = document.createElement('small'); how.textContent = gesture.how;
-    item.append(name, said, how); $('gesture-guide').append(item);
+    const note = document.createElement('small'); note.className = 'note';
+    item.append(name, said, how, note); $('gesture-guide').append(item);
   }
   for (const scenario of SCENARIOS) { const option = document.createElement('option'); option.value = scenario.id; option.textContent = scenario.name; $('scenario').append(option); }
   renderPhrases(); renderQuickReplies(DEFAULT_REPLIES); renderEnvironment('everyday');
@@ -309,6 +341,7 @@ function init() {
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
   $('morse-test').onclick = () => run('morseTest');
+  $('dictate').onclick = toggleDictation;
   // Buzzer type takes effect immediately; a floating or mismatched pin is audible straight away.
   $('buzzer').onchange = () => { settingsDirty = true; $('settings').requestSubmit(); };
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };

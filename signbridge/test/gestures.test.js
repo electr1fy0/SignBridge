@@ -4,7 +4,7 @@ import { GESTURES, ENVIRONMENTS, meaning, normalizeGesture } from '../public/js/
 import { formatLcd } from '../public/js/protocol.js';
 
 test('every environment gives every gesture a phrase that fits the LCD', () => {
-  assert.equal(Object.keys(GESTURES).length, 8);
+  assert.equal(Object.keys(GESTURES).length, 12);
   for (const env of ENVIRONMENTS) {
     assert.deepEqual(Object.keys(env.phrases).sort(), Object.keys(GESTURES).sort(), env.id);
     for (const [key, phrase] of Object.entries(env.phrases)) {

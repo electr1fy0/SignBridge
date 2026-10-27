@@ -44,7 +44,7 @@
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
           <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
         </div>
-        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
+        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still, palm-down hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
       </section>
 
       <section class="card reply" aria-labelledby="reply-heading">
@@ -53,7 +53,7 @@
         <form id="reply-form" class="composer">
           <label for="reply-text" class="visually-hidden">Your message</label>
           <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the glove’s screen" required></textarea>
-          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send</button></div>
+          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><div class="composer-actions"><button id="dictate" class="pill" type="button" aria-pressed="false" title="Speak the reply instead of typing (free, uses the browser's own speech recognition)"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg> Speak</button><button id="send" class="primary" type="submit" disabled>Send</button></div></div>
         </form>
         <p id="feedback" class="feedback small" role="status" aria-live="polite"></p>
         <details class="disclosure"><summary>Phrase library</summary><div class="phrase-filters"><label class="small secondary">Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label class="small secondary">Search<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="chips-row"></div></details>
@@ -68,7 +68,7 @@
 
     <section class="guide" aria-labelledby="guide-heading">
       <h2 id="guide-heading" class="section-title">Gestures in <span id="guide-env">Everyday</span></h2>
-      <p class="secondary">Same eight gestures, different meaning in every place. Hold a shape for half a second. Start motions from a still, open hand.</p>
+      <p class="secondary">The same gestures mean something different in every place. Hold a shape for half a second; for a combo, hold the shape with your palm turned up. Start motions from a still, open hand.</p>
       <ol id="gesture-guide" class="gesture-grid"></ol>
     </section>
 
@@ -76,10 +76,10 @@
       <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat, palm down, and still (palm-up combos are measured from this pose). Serial output is 115200 baud.</p>
       <section class="bend-panel" aria-labelledby="learn-heading">
         <h3 id="learn-heading">Learn hand shapes</h3>
-        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Flat hand and three join learned matching once they have a recording. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
         <ul id="shape-rows" class="shape-rows"></ul>
         <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
       </section>

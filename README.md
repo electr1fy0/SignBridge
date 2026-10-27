@@ -17,7 +17,7 @@ use the glove after flashing.
 1. Install **esp32 by Espressif Systems**, version **3.x**, in Arduino IDE's Boards Manager.
 2. Open `firmware/SignBridge/SignBridge.ino` and select **ESP32 Dev Module** and your USB port.
 3. Keep **Erase All Flash Before Sketch Upload disabled** to retain settings.
-4. Upload. Keep fingers straight and the hand flat and still during startup calibration.
+4. Upload. Keep fingers straight and the hand flat, palm down and still during startup calibration.
 5. Join Wi-Fi **SignBridge**, password **signbridge**.
 6. Open **http://192.168.4.1** in a normal browser tab. If the phone warns that this Wi-Fi has no internet, stay connected.
 7. Tap **Enable voice** for spoken translations. Speech is produced by the phone/computer; offline speech depends on its installed voices.
@@ -66,7 +66,7 @@ digits and . , ? ' ! -), and the Shake (emergency) gesture beeps SOS twice.
 
 ## Gestures and environments
 
-Eight easy gestures are recognized by deliberately permissive rules (both hand
+Twelve easy gestures (six hand shapes, four motions and two palm-up combos) are recognized by deliberately permissive rules (both hand
 shapes and motions can instead be learned from your own recordings, below). No
 gesture depends on the index or middle sensors. The environment chosen on the website
 decides what each one means. The firmware sends the gesture and environment;
@@ -78,14 +78,25 @@ the LCD and website show the phrase.
 | Thumbs up | Fist, thumb up | Sounds good! | I feel better now. | Good price, deal! | The food is great! | I understand. |
 | Pinky up | Fist, pinky out | Where is the washroom? | I need the washroom. | Do you have a smaller one? | Where is the washroom? | May I go to the washroom? |
 | Call me | Thumb and pinky out (🤙) | Please call me. | Please call my family. | Can I pay by UPI? | Can I order now? | I have a question. |
+| Flat hand | Fingers straight, thumb tucked | Please wait. | I need to rest. | Just looking, thanks. | That's enough, thanks. | Please slow down. |
+| Three | Thumb holds pinky down, three fingers up | What is your name? | I feel dizzy. | Three of these, please. | Table for three. | What is the homework? |
 | Wave | Open hand, side to side 2–3 times | Hello! | Nurse, please come. | Excuse me! | Waiter, please! | Good morning! |
 | Flip | Open hand, turn palm over | Thank you. | Thank you, doctor. | Can I get a discount? | The bill, please. | Thank you, teacher. |
 | Nod | Open hand, dip wrist down and back | Please repeat that. | I need water. | How much is this? | Water, please. | Please repeat that. |
-| Shake | Shake hard, any hand shape | Emergency! Please help me. | Emergency! Call a doctor. | Emergency! … | Emergency! … | Emergency! … |
+| Shake | Small fast jiggle, any hand shape | Emergency! Please help me. | Emergency! Call a doctor. | Emergency! … | Emergency! … | Emergency! … |
+| Fist, palm up (combo) | Make a fist while turning the palm up, hold | Here you go. | Here is my prescription. | Here is the money. | I'll pay now. | Here is my homework. |
+| Pinky, palm up (combo) | Pinky up with the palm turned up, hold | I promise. | I'll take my medicine. | I'll come back later. | I'll come back again. | I'll finish it tomorrow. |
 
-- **Hand shapes** use only the thumb, ring and pinky sensors. The ring finger
-  must be closed; then thumb and pinky in or out pick fist, thumbs up, pinky up
-  or call me. Hold the shape for about half a second with the hand fairly still.
+- **Hand shapes** use only the thumb, ring and pinky sensors; index and middle
+  readings are still shown in Device tools but never used. Ring closed: thumb and
+  pinky in or out pick fist, thumbs up, pinky up or call me. Ring open with the
+  thumb tucked: flat hand (pinky out) or three (thumb holding the pinky down).
+  Hold the shape for about half a second with the hand fairly still.
+- **Combos** are a closed shape (fist or pinky up) held with the palm turned up,
+  at least 130° from the palm-down calibration pose. The palm is checked when the
+  shape fires, so a combo replaces its plain shape instead of following it, and
+  turning a closed hand never counts as a flip. A shape still held when a motion
+  ends belongs to that motion and fires again only after it changes.
 - **Motions** use the gyroscope and accelerometer and do not depend on how the
   MPU is mounted. Each movement is measured from a still hand until the hand is
   still again, then classified by traits that do not overlap:
@@ -109,9 +120,9 @@ the LCD and website show the phrase.
   readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
   card, or `c` over serial) after putting the glove on again.
 - **Learned hand shapes** (Device tools → Learn hand shapes, or `t1`…`t4` over
-  serial) suit weak sensors. Record each of the four shapes up to three times:
-  3-second countdown, then 2 seconds of holding it. Once every shape has a
-  recording, the glove picks whichever recording (or the straight calibrated
+  serial) suit weak sensors. Record each shape up to three times:
+  3-second countdown, then 2 seconds of holding it. Once fist, thumbs up,
+  pinky up and call me have recordings, the glove picks whichever recording (or the straight calibrated
   hand) is closest to the
   last 400 ms of thumb, ring and pinky readings. Each finger is weighted by how steady it was, so a
   sensor that changes only a little but consistently still separates shapes.
@@ -139,7 +150,7 @@ Live readings start ON; motion details start OFF.
 | `s` | Show the environment, gesture meanings and Wi-Fi information |
 | `b` | Test the buzzer: plays SOS in Morse |
 | `e1` … `e5` | Switch environment: everyday, hospital, market, restaurant, classroom |
-| `t1` … `t4` | Record fist, thumbs up, pinky up, call me for learned shapes |
+| `t1` … `t6` | Record fist, thumbs up, pinky up, call me, flat hand, three for learned shapes |
 | `tx` | Clear recorded shapes and use bend triggers again |
 | `m1` … `m4` | Record wave, flip, nod, shake for learned motions |
 | `mx` | Clear recorded motions and use the built-in rules again |

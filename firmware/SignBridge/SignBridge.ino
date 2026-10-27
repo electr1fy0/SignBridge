@@ -6,7 +6,7 @@
  * Flex T/I/M/R/P: 33/35/36/34/32. MOVE MIDDLE FROM GPIO25 TO GPIO36.
  * MPU SDA/SCL: 21/22. LCD SDA/SCL: 18/19. Motor DRIVER control: 26. Buzzer signal: 27.
  * Join Wi-Fi SignBridge, password signbridge, open http://192.168.4.1.
- * Keep hand flat, straight and still during startup calibration.
+ * Keep hand flat, palm down, straight and still during startup calibration.
  * No gesture training: 4 hand shapes (fist, point, pinky, index+pinky) and
  * 4 motions (wave, flip, nod, shake) are fixed rules. The chosen environment
  * (everyday, hospital, market, restaurant, classroom) sets each gesture's phrase.
@@ -149,7 +149,8 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 #motion-summary { margin-top: 10px; }
 
 .center { text-align: center; margin: -8px 0 16px; }
-.hand .finger[data-unused="true"], .chips li[data-unused="true"], .bend-rows li[data-unused="true"] { opacity: .35; }
+.hand .finger[data-unused="true"], .chips li[data-unused="true"] { opacity: .35; }
+.bend-rows li > span:first-child small { display: block; font-size: 11px; color: var(--secondary); }
 .shape-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
 .shape-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
 .shape-rows small { display: block; color: var(--secondary); font-size: 13px; }
@@ -193,6 +194,13 @@ input[type="search"], select { display: block; width: 100%; margin-top: 4px; pad
 .gesture-grid .name { font-size: 13px; font-weight: 600; color: var(--secondary); display: flex; justify-content: space-between; }
 .gesture-grid .name::after { content: "Shape"; font-weight: 500; }
 .gesture-grid li[data-kind="motion"] .name::after { content: "Motion"; }
+.gesture-grid li[data-kind="combo"] .name::after { content: "Combo"; }
+.gesture-grid li[data-unavailable="true"] { opacity: .55; }
+.gesture-grid .note { color: var(--accent); }
+.gesture-grid .note:empty { display: none; }
+.composer-actions { display: flex; align-items: center; gap: 8px; }
+#dictate { display: inline-flex; align-items: center; gap: 6px; }
+#dictate[aria-pressed="true"] { background: var(--red); color: #fff; }
 .gesture-grid .meaning { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
 .gesture-grid small { font-size: 13px; color: var(--secondary); }
 
@@ -288,7 +296,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
           <div class="track"><div id="speed-fill" class="fill"></div><span class="mark" style="left:11.7%" title="Still"></span><span class="mark" style="left:30%" title="Motion starts"></span></div>
           <p id="motion-summary" class="secondary small">Shake, flip, wave or nod with an open hand.</p>
         </div>
-        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
+        <div class="hand-foot"><span class="secondary small">Calibrate with a flat, still, palm-down hand after putting the glove on.</span><button id="recalibrate" class="link" type="button" disabled>Recalibrate</button></div>
       </section>
 
       <section class="card reply" aria-labelledby="reply-heading">
@@ -297,7 +305,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
         <form id="reply-form" class="composer">
           <label for="reply-text" class="visually-hidden">Your message</label>
           <textarea id="reply-text" rows="2" maxlength="160" placeholder="Type a reply for the glove’s screen" required></textarea>
-          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><button id="send" class="primary" type="submit" disabled>Send</button></div>
+          <div class="composer-foot"><span id="lcd-preview" class="secondary small">Up to two lines on the glove’s display.</span><div class="composer-actions"><button id="dictate" class="pill" type="button" aria-pressed="false" title="Speak the reply instead of typing (free, uses the browser's own speech recognition)"><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg> Speak</button><button id="send" class="primary" type="submit" disabled>Send</button></div></div>
         </form>
         <p id="feedback" class="feedback small" role="status" aria-live="polite"></p>
         <details class="disclosure"><summary>Phrase library</summary><div class="phrase-filters"><label class="small secondary">Situation<select id="scenario"><option value="everyday">Everyday</option></select></label><label class="small secondary">Search<input id="phrase-search" type="search" placeholder="Search phrases"></label></div><div id="phrase-list" class="chips-row"></div></details>
@@ -312,7 +320,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
 
     <section class="guide" aria-labelledby="guide-heading">
       <h2 id="guide-heading" class="section-title">Gestures in <span id="guide-env">Everyday</span></h2>
-      <p class="secondary">Same eight gestures, different meaning in every place. Hold a shape for half a second. Start motions from a still, open hand.</p>
+      <p class="secondary">The same gestures mean something different in every place. Hold a shape for half a second; for a combo, hold the shape with your palm turned up. Start motions from a still, open hand.</p>
       <ol id="gesture-guide" class="gesture-grid"></ol>
     </section>
 
@@ -320,10 +328,10 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <summary><span>Device tools</span> <span id="sensor-summary" class="secondary small">Waiting for glove</span></summary>
       <p id="device-notice" class="notice small" role="status">Calibration instructions appear here.</p>
       <div class="tools-actions"><button id="calibrate" type="button" disabled>Calibrate hand</button><button id="cancel" type="button" disabled>Cancel</button><button id="live" type="button" aria-pressed="true" disabled>Serial values: on</button><button id="debug" type="button" aria-pressed="false" disabled>Serial motion details: off</button></div>
-      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
+      <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat, palm down, and still (palm-up combos are measured from this pose). Serial output is 115200 baud.</p>
       <section class="bend-panel" aria-labelledby="learn-heading">
         <h3 id="learn-heading">Learn hand shapes</h3>
-        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Flat hand and three join learned matching once they have a recording. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
         <ul id="shape-rows" class="shape-rows"></ul>
         <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
       </section>
@@ -349,18 +357,23 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
   <script type="module">
 // Gesture catalogue and per-environment meanings. Pure data shared by the
 // website, the tests and the firmware table generated by scripts/embed-web.mjs.
-// Key order is the firmware's gesture index order: hand shapes first, then motions.
-// Hand shapes only need the thumb, ring and pinky sensors; index and middle are not used.
+// Key order is the firmware's gesture index order: hand shapes first, then motions, then
+// combos. Hand shapes only need the thumb, ring and pinky sensors; index and middle are not
+// used. A combo is a closed hand shape held with the palm turned up (flex + accelerometer).
 
 const GESTURES = {
   FIST: { name: 'Fist', kind: 'shape', how: 'Close all fingers into a fist and hold still' },
   THUMB: { name: 'Thumbs up', kind: 'shape', how: 'Fist with the thumb straight up' },
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Fist with only the pinky straight' },
   CALL: { name: 'Call me', kind: 'shape', how: 'Thumb and pinky out, other fingers closed (🤙)' },
+  FLAT: { name: 'Flat hand', kind: 'shape', how: 'Fingers straight and together, thumb tucked across the palm' },
+  THREE: { name: 'Three', kind: 'shape', how: 'Thumb holds the pinky down, the other three fingers up' },
   WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, two or three big side-to-side sweeps' },
   FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
   NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up once, then hold still' },
   SHAKE: { name: 'Shake', kind: 'motion', how: 'Small, fast jiggle for about a second, like shaking water off (any hand shape)', urgent: true },
+  GIVE: { name: 'Fist, palm up', kind: 'combo', how: 'Make a fist as you turn the hand palm up, then hold it, like handing something over' },
+  PROMISE: { name: 'Pinky, palm up', kind: 'combo', how: 'Pinky up with the palm turned up, then hold it (pinky promise)' },
 };
 
 // Replies may be plain strings or {text, lcd:[line1, line2]} when the auto LCD wrap would be ugly.
@@ -374,10 +387,14 @@ const ENVIRONMENTS = [
       THUMB: { text: 'Sounds good!', replies: ['Great!', "I'm glad!"] },
       PINKY: { text: 'Where is the washroom?', replies: ["It's straight ahead.", "I'll show you.", 'On the left.'] },
       CALL: { text: 'Please call me.', replies: ['Sure, what is your number?', "I'll call you later."] },
+      FLAT: { text: 'Please wait.', replies: ['Sure, take your time.', 'Okay, I will wait.'] },
+      THREE: { text: 'What is your name?', replies: ['My name is Ravi.', 'Nice to meet you!'] },
       WAVE: { text: 'Hello!', replies: ['Hello!', 'How are you?', 'Nice to meet you!'] },
       FLIP: { text: 'Thank you.', replies: ["You're welcome!", 'Happy to help.', 'Anytime!'] },
       NOD: { text: 'Please repeat that.', replies: ["Sure, I'll repeat it.", "I'll write it down."] },
       SHAKE: { text: 'Emergency! Please help me.', replies: ["I'm coming!", 'Calling for help now.', 'Stay calm, help is coming.'] },
+      GIVE: { text: 'Here you go.', replies: ['Thank you!', 'Thanks a lot.'] },
+      PROMISE: { text: 'I promise.', replies: ['I believe you.', 'Okay, deal.'] },
     },
   },
   {
@@ -388,10 +405,14 @@ const ENVIRONMENTS = [
       THUMB: { text: 'I feel better now.', replies: ["That's good news!", "I'll tell the doctor.", 'Please keep resting.'] },
       PINKY: { text: 'I need the washroom.', replies: ["I'll help you there.", 'Can you walk?'] },
       CALL: { text: 'Please call my family.', replies: ["I'll call them now.", 'What is their number?'] },
+      FLAT: { text: 'I need to rest.', replies: ['Please lie down.', "I'll dim the lights."] },
+      THREE: { text: 'I feel dizzy.', replies: ['Please sit down.', "I'll call the nurse.", 'Drink some water.'] },
       WAVE: { text: 'Nurse, please come.', replies: ["I'm coming.", 'One minute, please.'] },
       FLIP: { text: 'Thank you, doctor.', replies: ["You're welcome.", 'Get well soon!'] },
       NOD: { text: 'I need water.', replies: ["I'll get you some water.", 'Here you go!'] },
       SHAKE: { text: 'Emergency! Call a doctor.', replies: ['Calling the doctor now!', 'Help is coming.', 'Stay calm.'] },
+      GIVE: { text: 'Here is my prescription.', replies: ['Thank you, one moment.', "I'll get your medicine."] },
+      PROMISE: { text: "I'll take my medicine.", replies: ['Good, after food please.', 'Thank you.'] },
     },
   },
   {
@@ -402,10 +423,14 @@ const ENVIRONMENTS = [
       THUMB: { text: 'Good price, deal!', replies: ['Deal!', 'Thank you!'] },
       PINKY: { text: 'Do you have a smaller one?', replies: ['Yes, here it is.', 'Sorry, only this size.'] },
       CALL: { text: 'Can I pay by UPI?', replies: ['Yes, scan this code.', 'Cash only, sorry.'] },
+      FLAT: { text: 'Just looking, thanks.', replies: ['Take your time.', 'Let me know if you need help.'] },
+      THREE: { text: 'Three of these, please.', replies: ['Here are three.', 'That will be 150 rupees.'] },
       WAVE: { text: 'Excuse me!', replies: ['Yes, how can I help?', 'One minute, please.'] },
       FLIP: { text: 'Can I get a discount?', replies: ['Okay, 10 percent off.', 'Sorry, fixed price.'] },
       NOD: { text: 'How much is this?', replies: ['It is 100 rupees.', 'It is 50 rupees.', 'Let me check.'] },
       SHAKE: { text: 'Emergency! Please help me.', replies: ["I'm coming!", 'Calling for help now.', 'Stay calm.'] },
+      GIVE: { text: 'Here is the money.', replies: ['Thank you!', "Here's your change."] },
+      PROMISE: { text: "I'll come back later.", replies: ['Okay, see you soon.', 'We close at 9.'] },
     },
   },
   {
@@ -416,10 +441,14 @@ const ENVIRONMENTS = [
       THUMB: { text: 'The food is great!', replies: ['Thank you!', "I'll tell the chef!"] },
       PINKY: { text: 'Where is the washroom?', replies: ["It's at the back.", "I'll show you."] },
       CALL: { text: 'Can I order now?', replies: ['Yes, what would you like?', 'One minute, please.'] },
+      FLAT: { text: "That's enough, thanks.", replies: ['Okay.', 'Anything else?'] },
+      THREE: { text: 'Table for three.', replies: ['This way, please.', 'Please wait five minutes.'] },
       WAVE: { text: 'Waiter, please!', replies: ['Coming!', 'One moment, please.'] },
       FLIP: { text: 'The bill, please.', replies: ["I'll bring the bill.", 'Card or cash?'] },
       NOD: { text: 'Water, please.', replies: ["I'll get you some water.", 'Cold or normal?'] },
       SHAKE: { text: 'Emergency! Please help me.', replies: ["I'm coming!", 'Calling for help now.', 'Stay calm.'] },
+      GIVE: { text: "I'll pay now.", replies: ['Card or cash?', "I'll bring the bill."] },
+      PROMISE: { text: "I'll come back again.", replies: ['Thank you, see you soon!', 'Have a nice day!'] },
     },
   },
   {
@@ -430,10 +459,14 @@ const ENVIRONMENTS = [
       THUMB: { text: 'I understand.', replies: ['Great!', "Let's continue."] },
       PINKY: { text: 'May I go to the washroom?', replies: ['Yes, you may go.', 'Please wait a minute.'] },
       CALL: { text: 'I have a question.', replies: ['Go ahead.', 'Please write it down.'] },
+      FLAT: { text: 'Please slow down.', replies: ["Sorry, I'll go slower.", 'Should I repeat that?'] },
+      THREE: { text: 'What is the homework?', replies: ["I'll write it on the board.", 'Page 42, questions 1 to 5.'] },
       WAVE: { text: 'Good morning!', replies: ['Good morning!', 'Please sit down.'] },
       FLIP: { text: 'Thank you, teacher.', replies: ["You're welcome!", 'Good work today.'] },
       NOD: { text: 'Please repeat that.', replies: ["Sure, I'll repeat it.", "I'll write it on the board."] },
       SHAKE: { text: 'Emergency! Please help me.', replies: ["I'm coming!", 'Calling for help now.', 'Stay calm.'] },
+      GIVE: { text: 'Here is my homework.', replies: ['Thank you.', 'Good work.'] },
+      PROMISE: { text: "I'll finish it tomorrow.", replies: ['Okay, tomorrow then.', 'Please do.'] },
     },
   },
 ];
@@ -802,7 +835,7 @@ class TextToSpeechManager {
 // State validation and replay handling shared by the live UI and tests.
 function validateState(state) {
   if (!state || state.type !== 'state' || typeof state.boot !== 'string' || !Number.isFinite(state.uptime)) throw new Error('This address is not running SignBridge firmware.');
-  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5], ['fullBend', 5], ['shapesTrained', 4], ['motionsTrained', 4]]) {
+  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5], ['fullBend', 5], ['shapesTrained', 6], ['motionsTrained', 4]]) {
     if (!Array.isArray(state[key]) || state[key].length !== length) throw new Error(`Incomplete device data: ${key}`);
   }
   if (typeof state.env !== 'string') throw new Error('Incomplete device data: env');
@@ -825,11 +858,45 @@ function replyDelivery(event) {
 }
 
 
+// Free speech-to-text through the browser's built-in recognizer (Web Speech API). No key or
+// cost, but the browser decides how it runs: Chrome sends audio to Google's service, so it
+// needs internet, and browsers only open the microphone on secure pages (https or localhost).
+
+/** @returns {{Recognition: Function|null, secure: boolean}} */
+function dictationSupport(win = globalThis) {
+  return {
+    Recognition: win.SpeechRecognition || win.webkitSpeechRecognition || null,
+    secure: Boolean(win.isSecureContext),
+  };
+}
+
+/** Plain-language explanation for a recognizer error code (or 'unsupported' / 'insecure'). */
+function dictationMessage(code) {
+  switch (code) {
+    case 'unsupported':
+      return "This browser has no built-in speech recognition. Use Chrome, Edge or Safari, or tap the microphone on your phone's keyboard.";
+    case 'insecure':
+      return "The browser blocked the microphone because the glove's page is plain http. Tap the microphone on your phone's keyboard instead, or in Chrome allow http://192.168.4.1 under chrome://flags/#unsafely-treat-insecure-origin-as-secure.";
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return "Microphone permission was denied. Allow it in the browser's site settings, or use the keyboard's microphone.";
+    case 'network':
+      return "This browser's speech recognition needs internet, and the glove's Wi-Fi has none. Use the keyboard's microphone, or give this device internet as well.";
+    case 'no-speech':
+      return 'No speech heard. Press Speak and try again.';
+    case 'audio-capture':
+      return 'No microphone was found on this device.';
+    default:
+      return "Speech recognition stopped. Try again, or use the keyboard's microphone.";
+  }
+}
+
+
 const $ = (id) => document.getElementById(id);
 const voice = new TextToSpeechManager({ onError: (message) => feedback(message, true) });
 let state = null, online = false, cursor = { boot: null, seq: 0 };
 let socket = null, retryTimer = null, lastPacket = 0, retryDelay = 800, generation = 0;
-let lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
+let dictation = null, lastTranslation = '', settingsDirty = false, bendDirty = false, displayedNotice = '', shownEnv = null, flashTimer = null, requestedEnv = null;
 const pending = new Map();
 const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
@@ -890,7 +957,7 @@ function showTranslation(event) {
   lastTranslation = translation.text;
   $('translation').textContent = translation.text;
   $('translation').dataset.urgent = String(translation.urgent);
-  $('sign-detail').textContent = `${translation.gesture} · ${translation.env} · ${event.source === 'flex' ? 'hand shape' : 'motion'}`;
+  $('sign-detail').textContent = `${translation.gesture} · ${translation.env} · ${{ flex: 'hand shape', combo: 'hand shape + palm up', motion: 'motion' }[event.source] ?? event.source}`;
   $('replay').disabled = !voice.isSupported();
   renderQuickReplies(translation.replies);
   const card = $('gesture-guide').querySelector(`[data-gesture="${translation.key}"]`);
@@ -924,9 +991,18 @@ function renderHand() {
     finger.dataset.unused = chip.dataset.unused = String(UNUSED_FINGERS.includes(i));
   }
   const shape = ready && state.shape ? state.shape : null, learned = state.shapeMode === 'learned';
-  $('hand-shape').textContent = state.job ? (state.recording >= 0 || state.recordingMotion >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? GESTURES[shape]?.name ?? shape : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? (state.recording >= 0 || state.recordingMotion >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? `${GESTURES[shape]?.name ?? shape}${state.palmUp ? ' · palm up' : ''}` : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
   const recorded = state.shapesTrained.filter(Boolean).length;
-  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of 4 shapes recorded`;
+  $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of ${state.shapesTrained.length} shapes recorded`;
+  // In learned mode a shape exists only once it has a recording; combos need their base shape.
+  const shapeKeys = Object.keys(GESTURES).filter((key) => GESTURES[key].kind === 'shape');
+  const comboBase = { GIVE: 'FIST', PROMISE: 'PINKY' };
+  for (const item of $('gesture-guide').children) {
+    const base = comboBase[item.dataset.gesture] ?? item.dataset.gesture, slot = shapeKeys.indexOf(base);
+    const unavailable = learned && slot >= 0 && !state.shapesTrained[slot];
+    item.dataset.unavailable = String(unavailable);
+    item.querySelector('.note').textContent = unavailable ? `Record ${GESTURES[base].name} in Device tools to use this` : '';
+  }
   [...$('motion-rows').children].forEach((row, i) => {
     const status = row.querySelector('.state'), count = state.motionsTrained[i];
     status.textContent = state.recordingMotion === i ? 'Recording…' : `${count} of 3 recorded`;
@@ -935,7 +1011,7 @@ function renderHand() {
   });
   [...$('shape-rows').children].forEach((row, i) => {
     const status = row.querySelector('.state'), count = state.shapesTrained[i];
-    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded`;
+    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded${learned && !count ? ' · record to use' : ''}`;
     status.dataset.done = String(count > 0);
     row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
@@ -1077,6 +1153,26 @@ function renderPhrases() {
     $('phrase-list').append(button);
   }
 }
+function setDictating(on) {
+  $('dictate').setAttribute('aria-pressed', String(on));
+  $('dictate').lastChild.textContent = on ? ' Listening…' : ' Speak';
+}
+// Speech fills the reply box for review; it is never sent without pressing Send.
+function toggleDictation() {
+  if (dictation) { dictation.stop(); return; }
+  const { Recognition, secure } = dictationSupport(window);
+  if (!Recognition) return feedback(dictationMessage('unsupported'), true);
+  const recognition = new Recognition(), before = $('reply-text').value.trim();
+  Object.assign(recognition, { lang: navigator.language || 'en-IN', interimResults: true, continuous: false, maxAlternatives: 1 });
+  recognition.onresult = (event) => {
+    const heard = [...event.results].map((result) => result[0].transcript).join('').trim();
+    $('reply-text').value = `${before}${before && heard ? ' ' : ''}${heard}`.slice(0, 160); preview();
+  };
+  recognition.onerror = (event) => feedback(dictationMessage(event.error === 'not-allowed' && !secure ? 'insecure' : event.error), true);
+  recognition.onend = () => { dictation = null; setDictating(false); };
+  try { recognition.start(); dictation = recognition; setDictating(true); feedback('Listening… speak the reply, then check it and press Send.'); }
+  catch { feedback(dictationMessage(secure ? 'other' : 'insecure'), true); }
+}
 function init() {
   fingerNames.forEach((name, index) => {
     const row = document.createElement('tr');
@@ -1113,14 +1209,16 @@ function init() {
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
     track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
-    row.dataset.unused = String(UNUSED_FINGERS.includes(fingerNames.indexOf(name)));
+    // Index and middle stay fully visible here so their live readings can be shown; gestures just ignore them.
+    if (UNUSED_FINGERS.includes(fingerNames.indexOf(name))) { const note = document.createElement('small'); note.textContent = 'not used'; label.append(note); }
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
     const name = document.createElement('span'); name.className = 'name'; name.textContent = gesture.name;
     const said = document.createElement('span'); said.className = 'meaning';
     const how = document.createElement('small'); how.textContent = gesture.how;
-    item.append(name, said, how); $('gesture-guide').append(item);
+    const note = document.createElement('small'); note.className = 'note';
+    item.append(name, said, how, note); $('gesture-guide').append(item);
   }
   for (const scenario of SCENARIOS) { const option = document.createElement('option'); option.value = scenario.id; option.textContent = scenario.name; $('scenario').append(option); }
   renderPhrases(); renderQuickReplies(DEFAULT_REPLIES); renderEnvironment('everyday');
@@ -1130,6 +1228,7 @@ function init() {
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
   $('morse-test').onclick = () => run('morseTest');
+  $('dictate').onclick = toggleDictation;
   // Buzzer type takes effect immediately; a floating or mismatched pin is audible straight away.
   $('buzzer').onchange = () => { settingsDirty = true; $('settings').requestSubmit(); };
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
@@ -1178,17 +1277,17 @@ init();
 
 namespace sb {
 // BEGIN GENERATED GESTURES
-enum Gesture : int { G_FIST, G_THUMB, G_PINKY, G_CALL, G_WAVE, G_FLIP, G_NOD, G_SHAKE, GESTURE_N };
+enum Gesture : int { G_FIST, G_THUMB, G_PINKY, G_CALL, G_FLAT, G_THREE, G_WAVE, G_FLIP, G_NOD, G_SHAKE, G_GIVE, G_PROMISE, GESTURE_N };
 constexpr int ENV_N = 5;
-const char* gestureNames[GESTURE_N] = {"FIST", "THUMB", "PINKY", "CALL", "WAVE", "FLIP", "NOD", "SHAKE"};
+const char* gestureNames[GESTURE_N] = {"FIST", "THUMB", "PINKY", "CALL", "FLAT", "THREE", "WAVE", "FLIP", "NOD", "SHAKE", "GIVE", "PROMISE"};
 const char* envIds[ENV_N] = {"everyday", "hospital", "market", "restaurant", "classroom"};
 const char* envLcd[ENV_N] = {"EVERYDAY MODE", "HOSPITAL MODE", "MARKET MODE", "RESTAURANT MODE", "CLASSROOM MODE"};
 const char* phraseLcd[ENV_N][GESTURE_N][2] = {
-  {{"YES.", ""}, {"SOUNDS GOOD!", ""}, {"WHERE IS THE", "WASHROOM?"}, {"PLEASE CALL ME.", ""}, {"HELLO!", ""}, {"THANK YOU.", ""}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}},
-  {{"I AM IN PAIN.", ""}, {"I FEEL BETTER", "NOW."}, {"I NEED THE", "WASHROOM."}, {"PLEASE CALL MY", "FAMILY."}, {"NURSE, PLEASE", "COME."}, {"THANK YOU,", "DOCTOR."}, {"I NEED WATER.", ""}, {"EMERGENCY! CALL", "A DOCTOR."}},
-  {{"YES, I'LL BUY", "IT."}, {"GOOD PRICE,", "DEAL!"}, {"DO YOU HAVE A", "SMALLER ONE?"}, {"CAN I PAY BY", "UPI?"}, {"EXCUSE ME!", ""}, {"CAN I GET A", "DISCOUNT?"}, {"HOW MUCH IS", "THIS?"}, {"EMERGENCY!", "PLEASE HELP ME."}},
-  {{"YES, PLEASE.", ""}, {"THE FOOD IS", "GREAT!"}, {"WHERE IS THE", "WASHROOM?"}, {"CAN I ORDER NOW?", ""}, {"WAITER, PLEASE!", ""}, {"THE BILL,", "PLEASE."}, {"WATER, PLEASE.", ""}, {"EMERGENCY!", "PLEASE HELP ME."}},
-  {{"YES, I'M HERE.", ""}, {"I UNDERSTAND.", ""}, {"MAY I GO TO THE", "WASHROOM?"}, {"I HAVE A", "QUESTION."}, {"GOOD MORNING!", ""}, {"THANK YOU,", "TEACHER."}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}}
+  {{"YES.", ""}, {"SOUNDS GOOD!", ""}, {"WHERE IS THE", "WASHROOM?"}, {"PLEASE CALL ME.", ""}, {"PLEASE WAIT.", ""}, {"WHAT IS YOUR", "NAME?"}, {"HELLO!", ""}, {"THANK YOU.", ""}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE YOU GO.", ""}, {"I PROMISE.", ""}},
+  {{"I AM IN PAIN.", ""}, {"I FEEL BETTER", "NOW."}, {"I NEED THE", "WASHROOM."}, {"PLEASE CALL MY", "FAMILY."}, {"I NEED TO REST.", ""}, {"I FEEL DIZZY.", ""}, {"NURSE, PLEASE", "COME."}, {"THANK YOU,", "DOCTOR."}, {"I NEED WATER.", ""}, {"EMERGENCY! CALL", "A DOCTOR."}, {"HERE IS MY", "PRESCRIPTION."}, {"I'LL TAKE MY", "MEDICINE."}},
+  {{"YES, I'LL BUY", "IT."}, {"GOOD PRICE,", "DEAL!"}, {"DO YOU HAVE A", "SMALLER ONE?"}, {"CAN I PAY BY", "UPI?"}, {"JUST LOOKING,", "THANKS."}, {"THREE OF THESE,", "PLEASE."}, {"EXCUSE ME!", ""}, {"CAN I GET A", "DISCOUNT?"}, {"HOW MUCH IS", "THIS?"}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS THE", "MONEY."}, {"I'LL COME BACK", "LATER."}},
+  {{"YES, PLEASE.", ""}, {"THE FOOD IS", "GREAT!"}, {"WHERE IS THE", "WASHROOM?"}, {"CAN I ORDER NOW?", ""}, {"THAT'S ENOUGH,", "THANKS."}, {"TABLE FOR THREE.", ""}, {"WAITER, PLEASE!", ""}, {"THE BILL,", "PLEASE."}, {"WATER, PLEASE.", ""}, {"EMERGENCY!", "PLEASE HELP ME."}, {"I'LL PAY NOW.", ""}, {"I'LL COME BACK", "AGAIN."}},
+  {{"YES, I'M HERE.", ""}, {"I UNDERSTAND.", ""}, {"MAY I GO TO THE", "WASHROOM?"}, {"I HAVE A", "QUESTION."}, {"PLEASE SLOW", "DOWN."}, {"WHAT IS THE", "HOMEWORK?"}, {"GOOD MORNING!", ""}, {"THANK YOU,", "TEACHER."}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS MY", "HOMEWORK."}, {"I'LL FINISH IT", "TOMORROW."}}
 };
 // END GENERATED GESTURES
 constexpr int WINDOW = 75, PRE = 10, SAMPLE_MS = 20, FLEX_SAMPLE_MS = 100;
@@ -1214,10 +1313,17 @@ constexpr int SHAKE_SWINGS = 4, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
 constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
 // Learned shapes: each recording is 2 s of flex samples; live matching uses the mean of the
 // last 4 samples (400 ms). SIGMA_MIN keeps a very steady finger from dominating the match.
-constexpr int SHAPE_N = 4, SHAPE_EXAMPLES = 3, TRAIN_SAMPLES = 20, AVG_N = 4;
+constexpr int SHAPE_N = 6, SHAPE_EXAMPLES = 3, TRAIN_SAMPLES = 20, AVG_N = 4;
+// Learned matching starts once the first four shapes (fist, thumbs up, pinky up, call me) are
+// recorded; flat hand and three join it once they have their own recordings.
+constexpr int SHAPE_CORE = 4;
 constexpr float SIGMA_MIN = 6;
-constexpr uint32_t SHAPE_MAGIC = 0x53484152;  // changed whenever the shape set or layout changes
-static_assert(G_FIST == 0 && G_CALL == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
+constexpr uint32_t SHAPE_MAGIC = 0x53484153;  // changed whenever the shape set or layout changes
+constexpr uint32_t SHAPE_MAGIC_FOUR = 0x53484152;  // earlier four-shape layout, migrated on load
+static_assert(G_FIST == 0 && G_THREE == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
+// Combos: a closed shape held with the palm turned up, measured against the palm-down
+// calibration. Decided when the shape fires, so a combo never also fires its plain shape.
+constexpr float PALM_UP_DEG = 130;
 // Learned motions: up to three recordings each. A movement takes the nearest recording's
 // motion when its weighted feature distance is at most MOTION_LIMIT; anything further is ignored.
 constexpr int MOTION_N = 4, MOTION_EXAMPLES = 3, NF = 11;
@@ -1264,6 +1370,9 @@ uint32_t candidateAt = 0;
 // Up to three recordings per shape; matching uses whichever recording is closest.
 struct ShapeModel { uint32_t magic; uint8_t count[SHAPE_N], next[SHAPE_N]; float mean[SHAPE_N][SHAPE_EXAMPLES][5], var[SHAPE_N][SHAPE_EXAMPLES][5]; };
 ShapeModel model = {SHAPE_MAGIC};
+struct ShapeModelFour { uint32_t magic; uint8_t count[4], next[4]; float mean[4][SHAPE_EXAMPLES][5], var[4][SHAPE_EXAMPLES][5]; };
+float calGravity[3] = {0, 0, 1}, accSums[3] = {};
+bool gravityReady = false;
 float openVar[5] = {}, trainSums[5] = {}, trainSq[5] = {};
 double flexSq[5] = {};  // double: squared 12-bit readings summed over calibration
 float recent[AVG_N][5] = {};
@@ -1374,19 +1483,40 @@ void readFlex() {
   }
   recentIndex = (recentIndex + 1) % AVG_N; recentCount = min(recentCount + 1, AVG_N);
 }
-// Thumb, ring and pinky decide a hand shape. The ring must be closed, so an open hand
-// is never a shape; then the thumb and pinky being out or in picks one of four.
+// Thumb, ring and pinky decide a hand shape. Ring closed: thumb and pinky in or out pick
+// fist, thumbs up, pinky up or call me. Ring open: a tucked thumb picks flat hand (pinky
+// out) or three (thumb holding the pinky down); with the thumb out it is an open hand.
 int handShape() {
   bool t = bent[F_THUMB], r = bent[F_RING], p = bent[F_PINKY];
-  if (!r) return -1;
-  if (t && p) return G_FIST;
-  if (!t && p) return G_THUMB;
-  if (t && !p) return G_PINKY;
-  return G_CALL;
+  if (r) {
+    if (t && p) return G_FIST;
+    if (!t && p) return G_THUMB;
+    if (t && !p) return G_PINKY;
+    return G_CALL;
+  }
+  if (!t) return -1;
+  return p ? G_THREE : G_FLAT;
 }
+// Ring-closed shapes. Moving the hand while holding one of these never counts as a motion
+// (except shake), which is what keeps palm-up combos from also firing a flip.
+bool closedShape(int s) { return s == G_FIST || s == G_THUMB || s == G_PINKY || s == G_CALL; }
 bool learnedReady() {
-  for (int c = 0; c < SHAPE_N; ++c) if (!model.count[c]) return false;
+  for (int c = 0; c < SHAPE_CORE; ++c) if (!model.count[c]) return false;
   return true;
+}
+bool palmUp() {
+  if (!mpuOK || !gravityReady || preCount < PRE) return false;
+  float g[3] = {};
+  for (int i = 0; i < PRE; ++i) for (int k = 0; k < 3; ++k) g[k] += preA[i][k];
+  normalize(g);
+  float dot = constrain(g[0]*calGravity[0] + g[1]*calGravity[1] + g[2]*calGravity[2], -1.0f, 1.0f);
+  return acosf(dot) * 57.2958f >= PALM_UP_DEG;
+}
+int withCombo(int shape) {
+  if (!palmUp()) return shape;
+  if (shape == G_FIST) return G_GIVE;
+  if (shape == G_PINKY) return G_PROMISE;
+  return shape;
 }
 // Nearest recording of any shape, with the straight calibrated hand as the "no shape" class.
 // Each finger is scaled by its pooled spread, so a sensor that changes only a little but
@@ -1471,7 +1601,7 @@ void updateLCD() {
     snprintf(lines[0], 17, "RECORD %s", motionTrainIndex >= 0 ? gestureNames[G_WAVE + motionTrainIndex] : "");
     strlcpy(lines[1], job == Job::MotionPrep ? "GET READY" : "MOVE NOW", 17);
   } else if (job != Job::Idle) {
-    strlcpy(lines[0], "HAND FLAT", 17); strlcpy(lines[1], "KEEP STILL", 17);
+    strlcpy(lines[0], "HAND FLAT", 17); strlcpy(lines[1], "PALM DOWN, STILL", 17);
   } else if (lastGesture >= 0 && now - lastSignAt < 4000) {
     strlcpy(lines[0], phraseLcd[env][lastGesture][0], 17); strlcpy(lines[1], phraseLcd[env][lastGesture][1], 17);
   } else if (envAt && now - envAt < 2500) {
@@ -1599,6 +1729,22 @@ void loadSettings() {
     for (int e = 0; shapesValid && e < stored.count[c]; ++e) for (int i = 0; i < 5; ++i)
       shapesValid = shapesValid && isfinite(stored.mean[c][e][i]) && isfinite(stored.var[c][e][i]) && stored.var[c][e][i] >= 0;
   }
+  if (!shapesValid) {
+    // Recordings from the earlier four-shape layout keep their slots; the new shapes start empty.
+    ShapeModelFour four = {};
+    if (prefs.getBytesLength("shapes") == sizeof(four) && prefs.getBytes("shapes", &four, sizeof(four)) == sizeof(four) && four.magic == SHAPE_MAGIC_FOUR) {
+      stored = {SHAPE_MAGIC};
+      memcpy(stored.count, four.count, sizeof(four.count)); memcpy(stored.next, four.next, sizeof(four.next));
+      memcpy(stored.mean, four.mean, sizeof(four.mean)); memcpy(stored.var, four.var, sizeof(four.var));
+      shapesValid = true;
+      for (int c = 0; shapesValid && c < 4; ++c) {
+        shapesValid = stored.count[c] <= SHAPE_EXAMPLES && stored.next[c] < SHAPE_EXAMPLES;
+        for (int e = 0; shapesValid && e < stored.count[c]; ++e) for (int i = 0; i < 5; ++i)
+          shapesValid = shapesValid && isfinite(stored.mean[c][e][i]) && isfinite(stored.var[c][e][i]) && stored.var[c][e][i] >= 0;
+      }
+      if (shapesValid) prefs.putBytes("shapes", &stored, sizeof(stored));
+    }
+  }
   if (shapesValid) model = stored;
   MotionModel storedMotions = {};
   bool motionsValid = prefs.getBytesLength("motions") == sizeof(storedMotions) && prefs.getBytes("motions", &storedMotions, sizeof(storedMotions)) == sizeof(storedMotions) && storedMotions.magic == MOTION_MAGIC;
@@ -1617,8 +1763,8 @@ void setEnvironment(int index) {
 }
 void startCalibration() {
   resetRecognition(); job = Job::CalPrep; jobAt = millis(); sampleCount = imuSamples = 0;
-  memset(flexSums, 0, sizeof(flexSums)); memset(flexSq, 0, sizeof(flexSq)); memset(gyroSums, 0, sizeof(gyroSums)); maxCalibrationGyro = 0;
-  setNotice("Calibration: keep fingers straight and hand flat and still. Sampling starts in 2 seconds.");
+  memset(flexSums, 0, sizeof(flexSums)); memset(flexSq, 0, sizeof(flexSq)); memset(gyroSums, 0, sizeof(gyroSums)); memset(accSums, 0, sizeof(accSums)); maxCalibrationGyro = 0;
+  setNotice("Calibration: fingers straight, hand flat with the palm facing down, and still. Sampling starts in 2 seconds.");
 }
 void finishJob(const char* text) {
   job = Job::Idle; shapeTrainIndex = motionTrainIndex = -1; resetRecognition(); setNotice(text);
@@ -1721,7 +1867,7 @@ int learnedMotion(const float f[NF], MotionInfo& m) {
 int classifyMotion(MotionInfo& m, const float f[NF]) {
   int g = motionsLearned() ? learnedMotion(f, m) : ruleMotion(m);
   // A flex shape at the end means the hand was moving into a sign, not making a motion.
-  if (g != G_SHAKE && useFlex && flexReady && currentShape() >= 0) return -1;
+  if (g != G_SHAKE && useFlex && flexReady && closedShape(currentShape())) return -1;
   return g;
 }
 void saveMotionExample(const float f[NF]) {
@@ -1753,7 +1899,8 @@ void finishCapture() {
   if (debugOn) Serial.printf("MOTION swings=%d rate=%.1f/s sweep=%.0f turn=%.0f tilt=%.0f energy=%.0f distance=%.2f -> %s\n", m.swings, m.rate, m.sweep, m.turn, m.tilt, m.energy, m.distance, m.result >= 0 ? gestureNames[m.result] : "NONE");
   if (m.result >= 0) {
     showGesture(m.result, "motion");
-    shapeCandidate = heldShape = -1;
+    // A shape still held when the motion ends belongs to the motion; it fires only once changed.
+    shapeCandidate = heldShape = useFlex && flexReady ? currentShape() : -1; candidateAt = millis();
   }
 }
 void tickJob(bool flexSampled) {
@@ -1768,7 +1915,7 @@ void tickJob(bool flexSampled) {
         ++sampleCount;
       }
       if (mpuOK) {
-        for (int k = 0; k < 3; ++k) gyroSums[k] += rawGyr[k];
+        for (int k = 0; k < 3; ++k) { gyroSums[k] += rawGyr[k]; accSums[k] += acc[k]; }
         maxCalibrationGyro = max(maxCalibrationGyro, magnitude(rawGyr)); ++imuSamples;
       }
       if (sampleCount >= 60) {
@@ -1778,7 +1925,10 @@ void tickJob(bool flexSampled) {
           openVar[i] = max(0.0f, float(flexSq[i]/sampleCount - double(baseline[i])*baseline[i]));
         }
         mask = 0; flexReady = true; recentCount = 0;
-        if (imuSamples >= 30) { for (int k = 0; k < 3; ++k) gyroBias[k] = gyroSums[k]/imuSamples; imuReady = true; }
+        if (imuSamples >= 30) {
+          for (int k = 0; k < 3; ++k) { gyroBias[k] = gyroSums[k]/imuSamples; calGravity[k] = accSums[k]; }
+          normalize(calGravity); imuReady = gravityReady = true;  // calibration pose is palm down
+        }
         finishJob(imuReady && mpuOK ? "Calibration complete. Show a gesture." : "Flex calibrated. MPU unavailable; check wiring, then recalibrate for motion.");
       }
       break;
@@ -1789,17 +1939,16 @@ void tickJob(bool flexSampled) {
       if (!flexSampled) break;
       for (int i = 0; i < 5; ++i) { float v = filtered[i] - baseline[i]; trainSums[i] += v; trainSq[i] += v * v; }
       if (++sampleCount >= TRAIN_SAMPLES) {
-        int c = shapeTrainIndex, slot = model.next[c], trained = 0;
+        int c = shapeTrainIndex, slot = model.next[c];
         for (int i = 0; i < 5; ++i) {
           model.mean[c][slot][i] = trainSums[i] / sampleCount;
           model.var[c][slot][i] = max(0.0f, trainSq[i] / sampleCount - sq(model.mean[c][slot][i]));
         }
         model.next[c] = (slot + 1) % SHAPE_EXAMPLES; model.count[c] = min(model.count[c] + 1, SHAPE_EXAMPLES);
-        for (int g = 0; g < SHAPE_N; ++g) trained += model.count[g] > 0;
         bool saved = prefs.putBytes("shapes", &model, sizeof(model)) == sizeof(model);
         char message[160];
         snprintf(message, sizeof(message), "%s recording %d of %d saved%s. %s", gestureNames[c], model.count[c], SHAPE_EXAMPLES,
-          saved ? "" : " (flash save failed)", trained == SHAPE_N ? "Learned shape detection is on." : "Record every shape at least once to switch to learned detection.");
+          saved ? "" : " (flash save failed)", learnedReady() ? "Learned shape detection is on." : "Record fist, thumbs up, pinky up and call me to switch to learned detection.");
         finishJob(message);
       }
       break;
@@ -1833,7 +1982,11 @@ void tickRecognition() {
   liveShape = useFlex && flexReady ? currentShape() : -1;
   int shape = speed < STILL_SPEED ? liveShape : -1;
   if (shape != shapeCandidate) { shapeCandidate = shape; candidateAt = now; heldShape = -1; }
-  if (shape >= 0 && heldShape != shape && now - candidateAt >= HOLD_MS) { heldShape = shape; showGesture(shape, "flex"); }
+  if (shape >= 0 && heldShape != shape && now - candidateAt >= HOLD_MS) {
+    heldShape = shape;
+    int g = withCombo(shape);
+    showGesture(g, g == shape ? "flex" : "combo");
+  }
   if (!mpuOK || !imuReady) { restSince = 0; motionArmed = false; return; }
   if (speed < REST_SPEED) {
     if (!restSince) restSince = now;
@@ -1854,7 +2007,7 @@ void printReadings() {
 }
 void printStatus() {
   Serial.printf("Environment: %s (e1..e%d to switch)\n", envIds[env], ENV_N);
-  Serial.printf("Hand shapes: %s (t1..t4 record, tx clear)\n", learnedReady() ? "learned from recordings" : "bend triggers");
+  Serial.printf("Hand shapes: %s (t1..t6 record, tx clear)\n", learnedReady() ? "learned from recordings" : "bend triggers");
   Serial.printf("Motions: %s (m1..m4 record, mx clear)\n", motionsLearned() ? "learned from recordings" : "built-in rules");
   for (int g = 0; g < GESTURE_N; ++g) Serial.printf("%-6s -> %s %s\n", gestureNames[g], phraseLcd[env][g][0], phraseLcd[env][g][1]);
   Serial.printf("Wi-Fi %s / %s; http://192.168.4.1\n", AP_SSID, AP_PASSWORD);
@@ -1916,7 +2069,7 @@ void serialInput() {
       else if (!strcmp(line, "b")) strlcpy(c.op, "morseTest", sizeof(c.op));
       else if (strlen(line) == 2 && line[0] == 'e' && line[1] >= '1' && line[1] < '1' + ENV_N) { strlcpy(c.op,"env",sizeof(c.op)); c.index = line[1]-'1'; }
       else if (!strncmp(line, "reply ", 6)) { strlcpy(c.op,"reply",sizeof(c.op)); strlcpy(c.text,line+6,sizeof(c.text)); strlcpy(c.id,"serial",sizeof(c.id)); strlcpy(c.vib,"MSG",sizeof(c.vib)); }
-      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, b buzzer test, e1..e5 environment, t1..t4 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
+      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, b buzzer test, e1..e5 environment, t1..t6 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
       execute(c);
     } else if (!overflow) {
       if (used < sizeof(line)-1) line[used++] = ch; else overflow = true;
@@ -1948,6 +2101,7 @@ void publishState() {
   addInts(root,"bendOn",bendOn,5);
   cJSON_AddStringToObject(root,"shapeMode",learnedReady() ? "learned" : "triggers");
   cJSON_AddStringToObject(root,"shape",liveShape >= 0 ? gestureNames[liveShape] : "");
+  jsonBool(root,"palmUp",palmUp());
   cJSON_AddNumberToObject(root,"recording",shapeTrainIndex);
   cJSON_AddStringToObject(root,"motionMode",motionsLearned() ? "learned" : "rules");
   cJSON_AddNumberToObject(root,"recordingMotion",motionTrainIndex);
