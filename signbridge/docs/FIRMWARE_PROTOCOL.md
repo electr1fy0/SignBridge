@@ -29,7 +29,7 @@ acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
 the current `env` id, the five per-finger bend triggers `bendOn`, `fullBend`
 (per-finger change drawn as a full bend), `shapeMode` (`triggers` or `learned`),
 `shape` (the hand shape seen right now, or empty), `palmUp` (palm turned up from
-the calibration pose), `shapesTrained` (recordings per shape, 0–3, six shapes), `buzzer` (`off`, `low`,
+the calibration pose), `shapesTrained` (recordings per shape, 0–3, five shapes), `buzzer` (`off`, `low`,
 `high` or `passive`), `morse` (true while Morse is playing),
 `recording` (shape index being recorded, or -1), `motionMode` (`rules` or
 `learned`), `motionsTrained` (recordings per motion, 0–3), `recordingMotion`
@@ -41,7 +41,7 @@ analysed movement.
 An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `env`,
 `requestId`, `lcd`, `haptic`, and `buzzer` (true when the reply was spelled in
 Morse, or a Shake sounded SOS). For signs, `text` is the gesture key (`FIST`,
-`THUMB`, `PINKY`, `CALL`, `FLAT`, `THREE`, `WAVE`, `FLIP`, `NOD`, `SHAKE`, `GIVE`,
+`THUMB`, `PINKY`, `CALL`, `THREE`, `WAVE`, `FLIP`, `NOD`, `SHAKE`, `GIVE`,
 `PROMISE`; `source` is `flex`, `combo` or `motion`) and `env` is the
 environment it was made in; the browser maps the pair to a phrase with `gestures.js`. Clients deduplicate by boot + sequence and do not speak
 initial/reconnected history again. All connected screens receive the same
@@ -82,8 +82,8 @@ Other commands:
 Environment ids are `everyday`, `hospital`, `market`, `restaurant` and
 `classroom`. Bend trigger values are whole numbers from 20 to 1000, in thumb,
 index, middle, ring, pinky order; a finger reads straight again below two thirds
-of its trigger. Triggers persist. `trainShape` indices 0–5 are fist, thumbs up, pinky up,
-call me, flat hand and three (up to three recordings each, learned matching once each has one);
+of its trigger. Triggers persist. `trainShape` indices 0–4 are fist, thumbs up, pinky up,
+call me and three (up to three recordings each, learned matching once each has one);
 `trainMotion` indices 0–3 are wave, flip, nod and shake (up to three
 recordings each, learned matching once each has one); recordings persist and learned matching starts once all four exist. Booleans and ids are validated, and settings changes are refused
 while calibration is running. HTTP 202 means queued; subsequent state
@@ -95,7 +95,7 @@ Pausing serial output does not pause wireless telemetry or recognition.
 ## Serial
 
 Serial Monitor runs at 115200 baud. Commands are whole lines, separated by
-newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`, `t1..t6`, `tx`, `m1..m4`, `mx`, `b`,
+newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`, `t1..t5`, `tx`, `m1..m4`, `mx`, `b`,
 `reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
 text is never interpreted as individual command keys.
 

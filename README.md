@@ -66,7 +66,7 @@ digits and . , ? ' ! -), and the Shake (emergency) gesture beeps SOS twice.
 
 ## Gestures and environments
 
-Twelve easy gestures (six hand shapes, four motions and two palm-up combos) are recognized by deliberately permissive rules (both hand
+Eleven easy gestures (five hand shapes, four motions and two palm-up combos) are recognized by deliberately permissive rules (both hand
 shapes and motions can instead be learned from your own recordings, below). No
 gesture depends on the index or middle sensors. The environment chosen on the website
 decides what each one means. The firmware sends the gesture and environment;
@@ -78,7 +78,6 @@ the LCD and website show the phrase.
 | Thumbs up | Fist, thumb up | Sounds good! | I feel better now. | Good price, deal! | The food is great! | I understand. |
 | Pinky up | Fist, pinky out | Where is the washroom? | I need the washroom. | Do you have a smaller one? | Where is the washroom? | May I go to the washroom? |
 | Call me | Thumb and pinky out (🤙) | Please call me. | Please call my family. | Can I pay by UPI? | Can I order now? | I have a question. |
-| Flat hand | Fingers straight, thumb tucked | Please wait. | I need to rest. | Just looking, thanks. | That's enough, thanks. | Please slow down. |
 | Three | Thumb holds pinky down, three fingers up | What is your name? | I feel dizzy. | Three of these, please. | Table for three. | What is the homework? |
 | Wave | Open hand, side to side 2–3 times | Hello! | Nurse, please come. | Excuse me! | Waiter, please! | Good morning! |
 | Flip | Open hand, turn palm over | Thank you. | Thank you, doctor. | Can I get a discount? | The bill, please. | Thank you, teacher. |
@@ -89,8 +88,9 @@ the LCD and website show the phrase.
 
 - **Hand shapes** use only the thumb, ring and pinky sensors; index and middle
   readings are still shown in Device tools but never used. Ring closed: thumb and
-  pinky in or out pick fist, thumbs up, pinky up or call me. Ring open with the
-  thumb tucked: flat hand (pinky out) or three (thumb holding the pinky down).
+  pinky in or out pick fist, thumbs up, pinky up or call me. Ring open: only three
+  (thumb holding the pinky down) counts. A lone tucked thumb is deliberately not a
+  shape, because a resting open hand often does that.
   Hold the shape for about half a second with the hand fairly still.
 - **Combos** are a closed shape (fist or pinky up) held with the palm turned up,
   at least 130° from the palm-down calibration pose. The palm is checked when the
@@ -150,7 +150,7 @@ Live readings start ON; motion details start OFF.
 | `s` | Show the environment, gesture meanings and Wi-Fi information |
 | `b` | Test the buzzer: plays SOS in Morse |
 | `e1` … `e5` | Switch environment: everyday, hospital, market, restaurant, classroom |
-| `t1` … `t6` | Record fist, thumbs up, pinky up, call me, flat hand, three for learned shapes |
+| `t1` … `t5` | Record fist, thumbs up, pinky up, call me, three for learned shapes |
 | `tx` | Clear recorded shapes and use bend triggers again |
 | `m1` … `m4` | Record wave, flip, nod, shake for learned motions |
 | `mx` | Clear recorded motions and use the built-in rules again |

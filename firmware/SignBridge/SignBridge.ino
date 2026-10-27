@@ -331,7 +331,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat, palm down, and still (palm-up combos are measured from this pose). Serial output is 115200 baud.</p>
       <section class="bend-panel" aria-labelledby="learn-heading">
         <h3 id="learn-heading">Learn hand shapes</h3>
-        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Flat hand and three join learned matching once they have a recording. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Three joins learned matching once it has a recording. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
         <ul id="shape-rows" class="shape-rows"></ul>
         <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
       </section>
@@ -366,7 +366,6 @@ const GESTURES = {
   THUMB: { name: 'Thumbs up', kind: 'shape', how: 'Fist with the thumb straight up' },
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Fist with only the pinky straight' },
   CALL: { name: 'Call me', kind: 'shape', how: 'Thumb and pinky out, other fingers closed (🤙)' },
-  FLAT: { name: 'Flat hand', kind: 'shape', how: 'Fingers straight and together, thumb tucked across the palm' },
   THREE: { name: 'Three', kind: 'shape', how: 'Thumb holds the pinky down, the other three fingers up' },
   WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, two or three big side-to-side sweeps' },
   FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
@@ -387,7 +386,6 @@ const ENVIRONMENTS = [
       THUMB: { text: 'Sounds good!', replies: ['Great!', "I'm glad!"] },
       PINKY: { text: 'Where is the washroom?', replies: ["It's straight ahead.", "I'll show you.", 'On the left.'] },
       CALL: { text: 'Please call me.', replies: ['Sure, what is your number?', "I'll call you later."] },
-      FLAT: { text: 'Please wait.', replies: ['Sure, take your time.', 'Okay, I will wait.'] },
       THREE: { text: 'What is your name?', replies: ['My name is Ravi.', 'Nice to meet you!'] },
       WAVE: { text: 'Hello!', replies: ['Hello!', 'How are you?', 'Nice to meet you!'] },
       FLIP: { text: 'Thank you.', replies: ["You're welcome!", 'Happy to help.', 'Anytime!'] },
@@ -405,7 +403,6 @@ const ENVIRONMENTS = [
       THUMB: { text: 'I feel better now.', replies: ["That's good news!", "I'll tell the doctor.", 'Please keep resting.'] },
       PINKY: { text: 'I need the washroom.', replies: ["I'll help you there.", 'Can you walk?'] },
       CALL: { text: 'Please call my family.', replies: ["I'll call them now.", 'What is their number?'] },
-      FLAT: { text: 'I need to rest.', replies: ['Please lie down.', "I'll dim the lights."] },
       THREE: { text: 'I feel dizzy.', replies: ['Please sit down.', "I'll call the nurse.", 'Drink some water.'] },
       WAVE: { text: 'Nurse, please come.', replies: ["I'm coming.", 'One minute, please.'] },
       FLIP: { text: 'Thank you, doctor.', replies: ["You're welcome.", 'Get well soon!'] },
@@ -423,7 +420,6 @@ const ENVIRONMENTS = [
       THUMB: { text: 'Good price, deal!', replies: ['Deal!', 'Thank you!'] },
       PINKY: { text: 'Do you have a smaller one?', replies: ['Yes, here it is.', 'Sorry, only this size.'] },
       CALL: { text: 'Can I pay by UPI?', replies: ['Yes, scan this code.', 'Cash only, sorry.'] },
-      FLAT: { text: 'Just looking, thanks.', replies: ['Take your time.', 'Let me know if you need help.'] },
       THREE: { text: 'Three of these, please.', replies: ['Here are three.', 'That will be 150 rupees.'] },
       WAVE: { text: 'Excuse me!', replies: ['Yes, how can I help?', 'One minute, please.'] },
       FLIP: { text: 'Can I get a discount?', replies: ['Okay, 10 percent off.', 'Sorry, fixed price.'] },
@@ -441,7 +437,6 @@ const ENVIRONMENTS = [
       THUMB: { text: 'The food is great!', replies: ['Thank you!', "I'll tell the chef!"] },
       PINKY: { text: 'Where is the washroom?', replies: ["It's at the back.", "I'll show you."] },
       CALL: { text: 'Can I order now?', replies: ['Yes, what would you like?', 'One minute, please.'] },
-      FLAT: { text: "That's enough, thanks.", replies: ['Okay.', 'Anything else?'] },
       THREE: { text: 'Table for three.', replies: ['This way, please.', 'Please wait five minutes.'] },
       WAVE: { text: 'Waiter, please!', replies: ['Coming!', 'One moment, please.'] },
       FLIP: { text: 'The bill, please.', replies: ["I'll bring the bill.", 'Card or cash?'] },
@@ -459,7 +454,6 @@ const ENVIRONMENTS = [
       THUMB: { text: 'I understand.', replies: ['Great!', "Let's continue."] },
       PINKY: { text: 'May I go to the washroom?', replies: ['Yes, you may go.', 'Please wait a minute.'] },
       CALL: { text: 'I have a question.', replies: ['Go ahead.', 'Please write it down.'] },
-      FLAT: { text: 'Please slow down.', replies: ["Sorry, I'll go slower.", 'Should I repeat that?'] },
       THREE: { text: 'What is the homework?', replies: ["I'll write it on the board.", 'Page 42, questions 1 to 5.'] },
       WAVE: { text: 'Good morning!', replies: ['Good morning!', 'Please sit down.'] },
       FLIP: { text: 'Thank you, teacher.', replies: ["You're welcome!", 'Good work today.'] },
@@ -835,7 +829,7 @@ class TextToSpeechManager {
 // State validation and replay handling shared by the live UI and tests.
 function validateState(state) {
   if (!state || state.type !== 'state' || typeof state.boot !== 'string' || !Number.isFinite(state.uptime)) throw new Error('This address is not running SignBridge firmware.');
-  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5], ['fullBend', 5], ['shapesTrained', 6], ['motionsTrained', 4]]) {
+  for (const [key, length] of [['flex', 5], ['delta', 5], ['baseline', 5], ['acc', 3], ['gyro', 3], ['bendOn', 5], ['fullBend', 5], ['shapesTrained', 5], ['motionsTrained', 4]]) {
     if (!Array.isArray(state[key]) || state[key].length !== length) throw new Error(`Incomplete device data: ${key}`);
   }
   if (typeof state.env !== 'string') throw new Error('Incomplete device data: env');
@@ -1277,17 +1271,17 @@ init();
 
 namespace sb {
 // BEGIN GENERATED GESTURES
-enum Gesture : int { G_FIST, G_THUMB, G_PINKY, G_CALL, G_FLAT, G_THREE, G_WAVE, G_FLIP, G_NOD, G_SHAKE, G_GIVE, G_PROMISE, GESTURE_N };
+enum Gesture : int { G_FIST, G_THUMB, G_PINKY, G_CALL, G_THREE, G_WAVE, G_FLIP, G_NOD, G_SHAKE, G_GIVE, G_PROMISE, GESTURE_N };
 constexpr int ENV_N = 5;
-const char* gestureNames[GESTURE_N] = {"FIST", "THUMB", "PINKY", "CALL", "FLAT", "THREE", "WAVE", "FLIP", "NOD", "SHAKE", "GIVE", "PROMISE"};
+const char* gestureNames[GESTURE_N] = {"FIST", "THUMB", "PINKY", "CALL", "THREE", "WAVE", "FLIP", "NOD", "SHAKE", "GIVE", "PROMISE"};
 const char* envIds[ENV_N] = {"everyday", "hospital", "market", "restaurant", "classroom"};
 const char* envLcd[ENV_N] = {"EVERYDAY MODE", "HOSPITAL MODE", "MARKET MODE", "RESTAURANT MODE", "CLASSROOM MODE"};
 const char* phraseLcd[ENV_N][GESTURE_N][2] = {
-  {{"YES.", ""}, {"SOUNDS GOOD!", ""}, {"WHERE IS THE", "WASHROOM?"}, {"PLEASE CALL ME.", ""}, {"PLEASE WAIT.", ""}, {"WHAT IS YOUR", "NAME?"}, {"HELLO!", ""}, {"THANK YOU.", ""}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE YOU GO.", ""}, {"I PROMISE.", ""}},
-  {{"I AM IN PAIN.", ""}, {"I FEEL BETTER", "NOW."}, {"I NEED THE", "WASHROOM."}, {"PLEASE CALL MY", "FAMILY."}, {"I NEED TO REST.", ""}, {"I FEEL DIZZY.", ""}, {"NURSE, PLEASE", "COME."}, {"THANK YOU,", "DOCTOR."}, {"I NEED WATER.", ""}, {"EMERGENCY! CALL", "A DOCTOR."}, {"HERE IS MY", "PRESCRIPTION."}, {"I'LL TAKE MY", "MEDICINE."}},
-  {{"YES, I'LL BUY", "IT."}, {"GOOD PRICE,", "DEAL!"}, {"DO YOU HAVE A", "SMALLER ONE?"}, {"CAN I PAY BY", "UPI?"}, {"JUST LOOKING,", "THANKS."}, {"THREE OF THESE,", "PLEASE."}, {"EXCUSE ME!", ""}, {"CAN I GET A", "DISCOUNT?"}, {"HOW MUCH IS", "THIS?"}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS THE", "MONEY."}, {"I'LL COME BACK", "LATER."}},
-  {{"YES, PLEASE.", ""}, {"THE FOOD IS", "GREAT!"}, {"WHERE IS THE", "WASHROOM?"}, {"CAN I ORDER NOW?", ""}, {"THAT'S ENOUGH,", "THANKS."}, {"TABLE FOR THREE.", ""}, {"WAITER, PLEASE!", ""}, {"THE BILL,", "PLEASE."}, {"WATER, PLEASE.", ""}, {"EMERGENCY!", "PLEASE HELP ME."}, {"I'LL PAY NOW.", ""}, {"I'LL COME BACK", "AGAIN."}},
-  {{"YES, I'M HERE.", ""}, {"I UNDERSTAND.", ""}, {"MAY I GO TO THE", "WASHROOM?"}, {"I HAVE A", "QUESTION."}, {"PLEASE SLOW", "DOWN."}, {"WHAT IS THE", "HOMEWORK?"}, {"GOOD MORNING!", ""}, {"THANK YOU,", "TEACHER."}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS MY", "HOMEWORK."}, {"I'LL FINISH IT", "TOMORROW."}}
+  {{"YES.", ""}, {"SOUNDS GOOD!", ""}, {"WHERE IS THE", "WASHROOM?"}, {"PLEASE CALL ME.", ""}, {"WHAT IS YOUR", "NAME?"}, {"HELLO!", ""}, {"THANK YOU.", ""}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE YOU GO.", ""}, {"I PROMISE.", ""}},
+  {{"I AM IN PAIN.", ""}, {"I FEEL BETTER", "NOW."}, {"I NEED THE", "WASHROOM."}, {"PLEASE CALL MY", "FAMILY."}, {"I FEEL DIZZY.", ""}, {"NURSE, PLEASE", "COME."}, {"THANK YOU,", "DOCTOR."}, {"I NEED WATER.", ""}, {"EMERGENCY! CALL", "A DOCTOR."}, {"HERE IS MY", "PRESCRIPTION."}, {"I'LL TAKE MY", "MEDICINE."}},
+  {{"YES, I'LL BUY", "IT."}, {"GOOD PRICE,", "DEAL!"}, {"DO YOU HAVE A", "SMALLER ONE?"}, {"CAN I PAY BY", "UPI?"}, {"THREE OF THESE,", "PLEASE."}, {"EXCUSE ME!", ""}, {"CAN I GET A", "DISCOUNT?"}, {"HOW MUCH IS", "THIS?"}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS THE", "MONEY."}, {"I'LL COME BACK", "LATER."}},
+  {{"YES, PLEASE.", ""}, {"THE FOOD IS", "GREAT!"}, {"WHERE IS THE", "WASHROOM?"}, {"CAN I ORDER NOW?", ""}, {"TABLE FOR THREE.", ""}, {"WAITER, PLEASE!", ""}, {"THE BILL,", "PLEASE."}, {"WATER, PLEASE.", ""}, {"EMERGENCY!", "PLEASE HELP ME."}, {"I'LL PAY NOW.", ""}, {"I'LL COME BACK", "AGAIN."}},
+  {{"YES, I'M HERE.", ""}, {"I UNDERSTAND.", ""}, {"MAY I GO TO THE", "WASHROOM?"}, {"I HAVE A", "QUESTION."}, {"WHAT IS THE", "HOMEWORK?"}, {"GOOD MORNING!", ""}, {"THANK YOU,", "TEACHER."}, {"PLEASE REPEAT", "THAT."}, {"EMERGENCY!", "PLEASE HELP ME."}, {"HERE IS MY", "HOMEWORK."}, {"I'LL FINISH IT", "TOMORROW."}}
 };
 // END GENERATED GESTURES
 constexpr int WINDOW = 75, PRE = 10, SAMPLE_MS = 20, FLEX_SAMPLE_MS = 100;
@@ -1313,13 +1307,14 @@ constexpr int SHAKE_SWINGS = 4, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
 constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
 // Learned shapes: each recording is 2 s of flex samples; live matching uses the mean of the
 // last 4 samples (400 ms). SIGMA_MIN keeps a very steady finger from dominating the match.
-constexpr int SHAPE_N = 6, SHAPE_EXAMPLES = 3, TRAIN_SAMPLES = 20, AVG_N = 4;
+constexpr int SHAPE_N = 5, SHAPE_EXAMPLES = 3, TRAIN_SAMPLES = 20, AVG_N = 4;
 // Learned matching starts once the first four shapes (fist, thumbs up, pinky up, call me) are
-// recorded; flat hand and three join it once they have their own recordings.
+// recorded; three joins it once it has its own recordings.
 constexpr int SHAPE_CORE = 4;
 constexpr float SIGMA_MIN = 6;
-constexpr uint32_t SHAPE_MAGIC = 0x53484153;  // changed whenever the shape set or layout changes
-constexpr uint32_t SHAPE_MAGIC_FOUR = 0x53484152;  // earlier four-shape layout, migrated on load
+constexpr uint32_t SHAPE_MAGIC = 0x53484154;  // changed whenever the shape set or layout changes
+// Earlier layouts, migrated on load: four shapes, then six (with a flat hand, since removed).
+constexpr uint32_t SHAPE_MAGIC_FOUR = 0x53484152, SHAPE_MAGIC_SIX = 0x53484153;
 static_assert(G_FIST == 0 && G_THREE == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
 // Combos: a closed shape held with the palm turned up, measured against the palm-down
 // calibration. Decided when the shape fires, so a combo never also fires its plain shape.
@@ -1370,7 +1365,6 @@ uint32_t candidateAt = 0;
 // Up to three recordings per shape; matching uses whichever recording is closest.
 struct ShapeModel { uint32_t magic; uint8_t count[SHAPE_N], next[SHAPE_N]; float mean[SHAPE_N][SHAPE_EXAMPLES][5], var[SHAPE_N][SHAPE_EXAMPLES][5]; };
 ShapeModel model = {SHAPE_MAGIC};
-struct ShapeModelFour { uint32_t magic; uint8_t count[4], next[4]; float mean[4][SHAPE_EXAMPLES][5], var[4][SHAPE_EXAMPLES][5]; };
 float calGravity[3] = {0, 0, 1}, accSums[3] = {};
 bool gravityReady = false;
 float openVar[5] = {}, trainSums[5] = {}, trainSq[5] = {};
@@ -1484,8 +1478,8 @@ void readFlex() {
   recentIndex = (recentIndex + 1) % AVG_N; recentCount = min(recentCount + 1, AVG_N);
 }
 // Thumb, ring and pinky decide a hand shape. Ring closed: thumb and pinky in or out pick
-// fist, thumbs up, pinky up or call me. Ring open: a tucked thumb picks flat hand (pinky
-// out) or three (thumb holding the pinky down); with the thumb out it is an open hand.
+// fist, thumbs up, pinky up or call me. Ring open: only three (thumb holding the pinky down)
+// counts. A lone tucked thumb is deliberately not a shape: a resting open hand does that.
 int handShape() {
   bool t = bent[F_THUMB], r = bent[F_RING], p = bent[F_PINKY];
   if (r) {
@@ -1494,8 +1488,7 @@ int handShape() {
     if (t && !p) return G_PINKY;
     return G_CALL;
   }
-  if (!t) return -1;
-  return p ? G_THREE : G_FLAT;
+  return t && p ? G_THREE : -1;
 }
 // Ring-closed shapes. Moving the hand while holding one of these never counts as a motion
 // (except shake), which is what keeps palm-up combos from also firing a flip.
@@ -1713,6 +1706,31 @@ void resetRecognition() {
   capturing = false; captureIndex = 0; preIndex = preCount = 0;
   motionArmed = false; restSince = 0; cooldownAt = millis();
 }
+bool validShapes(const ShapeModel& m) {
+  for (int c = 0; c < SHAPE_N; ++c) {
+    if (m.count[c] > SHAPE_EXAMPLES || m.next[c] >= SHAPE_EXAMPLES) return false;
+    for (int e = 0; e < m.count[c]; ++e) for (int i = 0; i < 5; ++i)
+      if (!isfinite(m.mean[c][e][i]) || !isfinite(m.var[c][e][i]) || m.var[c][e][i] < 0) return false;
+  }
+  return true;
+}
+// Reads an earlier recording layout of n shapes (magic, count[n], next[n], padding, then all
+// means and all variances) and moves old shape c to slots[c]; -1 drops it.
+bool migrateShapes(uint32_t magic, int n, const int* slots, ShapeModel& out) {
+  const size_t header = (4 + 2 * n + 3) / 4 * 4, block = sizeof(float) * SHAPE_EXAMPLES * 5, size = header + 2 * n * block;
+  uint8_t raw[1024]; uint32_t found = 0;
+  if (size > sizeof(raw) || prefs.getBytesLength("shapes") != size || prefs.getBytes("shapes", raw, size) != size) return false;
+  memcpy(&found, raw, sizeof(found));
+  if (found != magic) return false;
+  out = {SHAPE_MAGIC};
+  for (int c = 0; c < n; ++c) {
+    int slot = slots[c];
+    if (slot < 0) continue;
+    out.count[slot] = raw[4 + c]; out.next[slot] = raw[4 + n + c];
+    memcpy(out.mean[slot], raw + header + c * block, block); memcpy(out.var[slot], raw + header + (n + c) * block, block);
+  }
+  return true;
+}
 void loadSettings() {
   useFlex = prefs.getBool("useFlex", true); useMotor = prefs.getBool("useMotor", false);
   uint8_t savedBuzzer = prefs.getUChar("buzzer", uint8_t(Buzzer::ActiveLow));
@@ -1723,27 +1741,12 @@ void loadSettings() {
   for (int i = 0; valid && i < 5; ++i) valid = saved[i] >= BEND_MIN && saved[i] <= BEND_MAX;
   memcpy(bendOn, valid ? saved : DEFAULT_BEND_ON, sizeof(bendOn));
   ShapeModel stored = {};
-  bool shapesValid = prefs.getBytesLength("shapes") == sizeof(stored) && prefs.getBytes("shapes", &stored, sizeof(stored)) == sizeof(stored) && stored.magic == SHAPE_MAGIC;
-  for (int c = 0; shapesValid && c < SHAPE_N; ++c) {
-    shapesValid = stored.count[c] <= SHAPE_EXAMPLES && stored.next[c] < SHAPE_EXAMPLES;
-    for (int e = 0; shapesValid && e < stored.count[c]; ++e) for (int i = 0; i < 5; ++i)
-      shapesValid = shapesValid && isfinite(stored.mean[c][e][i]) && isfinite(stored.var[c][e][i]) && stored.var[c][e][i] >= 0;
-  }
+  bool shapesValid = prefs.getBytesLength("shapes") == sizeof(stored) && prefs.getBytes("shapes", &stored, sizeof(stored)) == sizeof(stored)
+    && stored.magic == SHAPE_MAGIC && validShapes(stored);
   if (!shapesValid) {
-    // Recordings from the earlier four-shape layout keep their slots; the new shapes start empty.
-    ShapeModelFour four = {};
-    if (prefs.getBytesLength("shapes") == sizeof(four) && prefs.getBytes("shapes", &four, sizeof(four)) == sizeof(four) && four.magic == SHAPE_MAGIC_FOUR) {
-      stored = {SHAPE_MAGIC};
-      memcpy(stored.count, four.count, sizeof(four.count)); memcpy(stored.next, four.next, sizeof(four.next));
-      memcpy(stored.mean, four.mean, sizeof(four.mean)); memcpy(stored.var, four.var, sizeof(four.var));
-      shapesValid = true;
-      for (int c = 0; shapesValid && c < 4; ++c) {
-        shapesValid = stored.count[c] <= SHAPE_EXAMPLES && stored.next[c] < SHAPE_EXAMPLES;
-        for (int e = 0; shapesValid && e < stored.count[c]; ++e) for (int i = 0; i < 5; ++i)
-          shapesValid = shapesValid && isfinite(stored.mean[c][e][i]) && isfinite(stored.var[c][e][i]) && stored.var[c][e][i] >= 0;
-      }
-      if (shapesValid) prefs.putBytes("shapes", &stored, sizeof(stored));
-    }
+    const int fourSlots[4] = {0, 1, 2, 3}, sixSlots[6] = {0, 1, 2, 3, -1, 4};  // -1: flat hand, dropped
+    shapesValid = (migrateShapes(SHAPE_MAGIC_FOUR, 4, fourSlots, stored) || migrateShapes(SHAPE_MAGIC_SIX, 6, sixSlots, stored)) && validShapes(stored);
+    if (shapesValid) prefs.putBytes("shapes", &stored, sizeof(stored));
   }
   if (shapesValid) model = stored;
   MotionModel storedMotions = {};
@@ -2007,7 +2010,7 @@ void printReadings() {
 }
 void printStatus() {
   Serial.printf("Environment: %s (e1..e%d to switch)\n", envIds[env], ENV_N);
-  Serial.printf("Hand shapes: %s (t1..t6 record, tx clear)\n", learnedReady() ? "learned from recordings" : "bend triggers");
+  Serial.printf("Hand shapes: %s (t1..t5 record, tx clear)\n", learnedReady() ? "learned from recordings" : "bend triggers");
   Serial.printf("Motions: %s (m1..m4 record, mx clear)\n", motionsLearned() ? "learned from recordings" : "built-in rules");
   for (int g = 0; g < GESTURE_N; ++g) Serial.printf("%-6s -> %s %s\n", gestureNames[g], phraseLcd[env][g][0], phraseLcd[env][g][1]);
   Serial.printf("Wi-Fi %s / %s; http://192.168.4.1\n", AP_SSID, AP_PASSWORD);
@@ -2069,7 +2072,7 @@ void serialInput() {
       else if (!strcmp(line, "b")) strlcpy(c.op, "morseTest", sizeof(c.op));
       else if (strlen(line) == 2 && line[0] == 'e' && line[1] >= '1' && line[1] < '1' + ENV_N) { strlcpy(c.op,"env",sizeof(c.op)); c.index = line[1]-'1'; }
       else if (!strncmp(line, "reply ", 6)) { strlcpy(c.op,"reply",sizeof(c.op)); strlcpy(c.text,line+6,sizeof(c.text)); strlcpy(c.id,"serial",sizeof(c.id)); strlcpy(c.vib,"MSG",sizeof(c.vib)); }
-      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, b buzzer test, e1..e5 environment, t1..t6 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
+      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, b buzzer test, e1..e5 environment, t1..t5 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
       execute(c);
     } else if (!overflow) {
       if (used < sizeof(line)-1) line[used++] = ch; else overflow = true;
