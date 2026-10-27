@@ -29,13 +29,16 @@ acceleration in m/s², gyro in degrees/second, a five-character bend pattern,
 the current `env` id, the five per-finger bend triggers `bendOn`, `fullBend`
 (per-finger change drawn as a full bend), `shapeMode` (`triggers` or `learned`),
 `shape` (the hand shape seen right now, or empty), `shapesTrained` (four booleans),
-`recording` (shape index being recorded, or -1), hardware settings, the most recent 12 conversation events,
-and `motion` (`swings`, `rate`, `turn`, `tilt`, `energy`, `result`) for the last
+`recording` (shape index being recorded, or -1), `motionMode` (`rules` or
+`learned`), `motionsTrained` (recordings per motion, 0–3), `recordingMotion`
+(motion index being recorded, or -1), hardware settings, the most recent 12 conversation events,
+and `motion` (`swings`, `rate`, `turn`, `tilt`, `energy`, `distance`, `result`;
+`distance` is -1 unless learned matching ran) for the last
 analysed movement.
 
 An event contains `seq`, `type` (`sign` or `reply`), `text`, `source`, `env`,
 `requestId`, `lcd`, and `haptic`. For signs, `text` is the gesture key (`FIST`,
-`POINT`, `PINKY`, `ROCK`, `WAVE`, `FLIP`, `NOD`, `SHAKE`) and `env` is the
+`THUMB`, `PINKY`, `CALL`, `WAVE`, `FLIP`, `NOD`, `SHAKE`) and `env` is the
 environment it was made in; the browser maps the pair to a phrase with `gestures.js`. Clients deduplicate by boot + sequence and do not speak
 initial/reconnected history again. All connected screens receive the same
 recent events. Browsers keep at most 60 rendered entries in memory.
@@ -64,6 +67,8 @@ Other commands:
 {"op":"bend","reset":true}
 {"op":"trainShape","index":0}
 {"op":"clearShapes"}
+{"op":"trainMotion","index":0}
+{"op":"clearMotions"}
 {"op":"live","value":false}
 {"op":"debug","value":true}
 {"op":"settings","useFlex":true,"useMotor":false}
@@ -72,8 +77,9 @@ Other commands:
 Environment ids are `everyday`, `hospital`, `market`, `restaurant` and
 `classroom`. Bend trigger values are whole numbers from 20 to 1000, in thumb,
 index, middle, ring, pinky order; a finger reads straight again below two thirds
-of its trigger. Triggers persist. `trainShape` indices 0–3 are fist, point, pinky up and
-index + pinky; recordings persist and learned matching starts once all four exist. Booleans and ids are validated, and settings changes are refused
+of its trigger. Triggers persist. `trainShape` indices 0–3 are fist, thumbs up, pinky up and
+call me; `trainMotion` indices 0–3 are wave, flip, nod and shake (up to three
+recordings each, learned matching once each has one); recordings persist and learned matching starts once all four exist. Booleans and ids are validated, and settings changes are refused
 while calibration is running. HTTP 202 means queued; subsequent state
 and reply events report execution. Queue overflow returns 503.
 
@@ -83,7 +89,7 @@ Pausing serial output does not pause wireless telemetry or recognition.
 ## Serial
 
 Serial Monitor runs at 115200 baud. Commands are whole lines, separated by
-newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`, `t1..t4`, `tx`,
+newline/CRLF; oversized lines are discarded. `p`, `d`, `c`, `s`, `q`, `e1..e5`, `t1..t4`, `tx`, `m1..m4`, `mx`,
 `reply TEXT`, and `?` are documented in the root guide. Arbitrary reply
 text is never interpreted as individual command keys.
 

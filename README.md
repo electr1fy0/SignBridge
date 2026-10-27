@@ -54,25 +54,26 @@ disabled; enable it only when the driver is connected. Hardware settings persist
 
 ## Gestures and environments
 
-Eight easy gestures are recognized by deliberately permissive rules (hand
-shapes can optionally be learned from your own recordings, below), and the environment chosen on the website
+Eight easy gestures are recognized by deliberately permissive rules (both hand
+shapes and motions can instead be learned from your own recordings, below). No
+gesture depends on the index or middle sensors. The environment chosen on the website
 decides what each one means. The firmware sends the gesture and environment;
 the LCD and website show the phrase.
 
 | Gesture | How | Everyday | Hospital | Market | Restaurant | Classroom |
 |---|---|---|---|---|---|---|
 | Fist | All fingers closed | Yes. | I am in pain. | Yes, I'll buy it. | Yes, please. | Yes, I'm here. |
-| Point | Index up | I have a question. | It hurts here. | How much is this? | I want this one. | I have a question. |
-| Pinky up | Pinky up | Where is the washroom? | I need the washroom. | Do you have a smaller one? | Where is the washroom? | May I go to the washroom? |
-| Index + pinky | Index and pinky up | I love it! | I feel better now. | Good price, deal! | The food is great! | I understand. |
+| Thumbs up | Fist, thumb up | Sounds good! | I feel better now. | Good price, deal! | The food is great! | I understand. |
+| Pinky up | Fist, pinky out | Where is the washroom? | I need the washroom. | Do you have a smaller one? | Where is the washroom? | May I go to the washroom? |
+| Call me | Thumb and pinky out (🤙) | Please call me. | Please call my family. | Can I pay by UPI? | Can I order now? | I have a question. |
 | Wave | Open hand, side to side 2–3 times | Hello! | Nurse, please come. | Excuse me! | Waiter, please! | Good morning! |
 | Flip | Open hand, turn palm over | Thank you. | Thank you, doctor. | Can I get a discount? | The bill, please. | Thank you, teacher. |
-| Nod | Open hand, dip wrist down and back | Please repeat that. | I need water. | Can I pay by UPI? | Water, please. | Please repeat that. |
+| Nod | Open hand, dip wrist down and back | Please repeat that. | I need water. | How much is this? | Water, please. | Please repeat that. |
 | Shake | Shake hard, any hand shape | Emergency! Please help me. | Emergency! Call a doctor. | Emergency! … | Emergency! … | Emergency! … |
 
-- **Hand shapes** need the middle and ring fingers closed; the index and pinky
-  then decide the shape. The thumb is not used. Hold the shape for about half a
-  second with the hand fairly still.
+- **Hand shapes** use only the thumb, ring and pinky sensors. The ring finger
+  must be closed; then thumb and pinky in or out pick fist, thumbs up, pinky up
+  or call me. Hold the shape for about half a second with the hand fairly still.
 - **Motions** use the gyroscope and accelerometer and do not depend on how the
   MPU is mounted. Each movement is measured from a still hand until the hand is
   still again, then classified by traits that do not overlap:
@@ -83,6 +84,14 @@ the LCD and website show the phrase.
 
   Small bounces below 35% of the movement's peak speed are not counted, so a nod's
   rebound does not turn it into a wave. Hold still for a moment between motions.
+- **Learned motions** (Device tools → Learn motions, or `m1`…`m4` over serial)
+  replace these rules once every motion has at least one recording. Press Record,
+  hold still, and do the motion once when the glove shows MOVE NOW; up to three
+  recordings per motion are kept. Each movement is described by which axes moved,
+  how far each turned, swing count and speed, energy and end tilt, and takes the
+  nearest recording's motion if its distance is at most `MOTION_LIMIT` (0.5);
+  anything further is ignored. Motion details show this distance for tuning.
+  **Clear motion recordings** (`mx`) returns to the built-in rules.
 - **Calibration** runs at every startup and records the straight-hand flex
   readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
   card, or `c` over serial) after putting the glove on again.
@@ -90,7 +99,7 @@ the LCD and website show the phrase.
   serial) suit weak sensors. Record each of the four shapes once: 3-second
   countdown, then 2 seconds of holding it. When all four are recorded, the glove
   picks whichever recording (or the straight calibrated hand) is closest to the
-  last 400 ms of readings. Each finger is weighted by how steady it was, so a
+  last 400 ms of thumb, ring and pinky readings. Each finger is weighted by how steady it was, so a
   sensor that changes only a little but consistently still separates shapes.
   Recordings are saved and survive recalibration; **Clear recordings** (`tx`)
   goes back to bend triggers.
@@ -115,8 +124,10 @@ Live readings start ON; motion details start OFF.
 | `c` | Calibrate straight fingers and the still MPU |
 | `s` | Show the environment, gesture meanings and Wi-Fi information |
 | `e1` … `e5` | Switch environment: everyday, hospital, market, restaurant, classroom |
-| `t1` … `t4` | Record fist, point, pinky up, index + pinky for learned shapes |
+| `t1` … `t4` | Record fist, thumbs up, pinky up, call me for learned shapes |
 | `tx` | Clear recorded shapes and use bend triggers again |
+| `m1` … `m4` | Record wave, flip, nod, shake for learned motions |
+| `mx` | Clear recorded motions and use the built-in rules again |
 | `q` | Cancel calibration |
 | `reply Hello` | Write a reply to the physical LCD |
 | `?` | Print command help |

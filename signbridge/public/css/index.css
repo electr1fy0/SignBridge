@@ -99,6 +99,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 24px 24px 40px; }
 #motion-summary { margin-top: 10px; }
 
 .center { text-align: center; margin: -8px 0 16px; }
+.hand .finger[data-unused="true"], .chips li[data-unused="true"], .bend-rows li[data-unused="true"] { opacity: .35; }
 .shape-rows { list-style: none; padding: 0; margin: 14px 0 4px; max-width: 680px; }
 .shape-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--separator); }
 .shape-rows small { display: block; color: var(--secondary); font-size: 13px; }

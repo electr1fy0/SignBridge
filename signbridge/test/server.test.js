@@ -49,12 +49,12 @@ test('WebSocket proxy carries live state, controls and physical-delivery flags',
     const response=await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'reply',id:'test-reply',text:'Yes',line1:'YES',line2:'',vib:'YES'})});
     assert.equal(response.status,202);
     const reply=(await acknowledged).events.at(-1);assert.equal(reply.lcd,false);assert.equal(reply.text,'Yes');
-    const toggled=waitState((state)=>state.live===false && state.debug===true && state.env==='hospital' && state.bendOn[0]===120 && state.shapeMode==='learned');
+    const toggled=waitState((state)=>state.live===false && state.debug===true && state.env==='hospital' && state.bendOn[0]===120 && state.shapeMode==='learned' && state.motionMode==='learned');
     for(const [op,value] of [['live',false],['debug',true],['env','hospital']]) await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,value})});
     await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'bend',values:[120,90,90,110,95]})});
-    for(let index=0;index<4;++index) await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op:'trainShape',index})});
+    for(const op of ['trainShape','trainMotion']) for(let index=0;index<4;++index) await fetch(url+'/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({op,index})});
     await toggled;
-    assert.deepEqual(mock.commands.map((c)=>c.op),['reply','live','debug','env','bend','trainShape','trainShape','trainShape','trainShape']);
+    assert.deepEqual(mock.commands.map((c)=>c.op),['reply','live','debug','env','bend',...Array(4).fill('trainShape'),...Array(4).fill('trainMotion')]);
   } finally {
     client.close(); await once(client,'close'); await stop(server); await mock.stop();
   }

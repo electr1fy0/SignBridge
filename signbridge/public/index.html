@@ -79,9 +79,15 @@
       <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
       <section class="bend-panel" aria-labelledby="learn-heading">
         <h3 id="learn-heading">Learn hand shapes</h3>
-        <p class="secondary small">Record each shape once: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Once all four are recorded, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Record each shape once: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Once all four are recorded, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
         <ul id="shape-rows" class="shape-rows"></ul>
         <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
+      </section>
+      <section class="bend-panel" aria-labelledby="learn-motions-heading">
+        <h3 id="learn-motions-heading">Learn motions</h3>
+        <p class="secondary small">Record each motion up to three times: press Record, hold still, and when the glove shows MOVE NOW do the motion once and stop. Once every motion has at least one recording, the glove matches movements against your recordings instead of the built-in rules; movements that match nothing well are ignored. More recordings make it more forgiving.</p>
+        <ul id="motion-rows" class="shape-rows"></ul>
+        <div class="tools-actions"><button id="clear-motions" type="button" disabled>Clear motion recordings</button></div>
       </section>
       <section class="bend-panel" aria-labelledby="bend-heading">
         <h3 id="bend-heading">Bend triggers</h3>

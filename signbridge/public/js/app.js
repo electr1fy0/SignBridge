@@ -14,7 +14,7 @@ const rows = new Map();
 const fingerNames = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'];
 const pins = [33, 35, 36, 34, 32];
 const BEND_SCALE = 600; // change shown at the right end of each bend bar
-const SHAPE_NAMES = { FIST: 'Fist', POINT: 'Point', PINKY: 'Pinky up', ROCK: 'Index + pinky' };
+const UNUSED_FINGERS = [1, 2]; // index and middle: no gesture depends on them
 
 function feedback(text, error = false) {
   $('feedback').textContent = text;
@@ -28,6 +28,8 @@ function availability() {
   $('reset-bend').disabled = !online;
   $('clear-shapes').disabled = !online || busy || !state?.shapesTrained?.some(Boolean);
   for (const button of $('shape-rows').querySelectorAll('button')) button.disabled = !online || busy || !state?.calibrated || !state?.useFlex;
+  $('clear-motions').disabled = !online || busy || !state?.motionsTrained?.some(Boolean);
+  for (const button of $('motion-rows').querySelectorAll('button')) button.disabled = !online || busy || !state?.mpu || !state?.imuCalibrated;
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
@@ -90,17 +92,25 @@ function renderHand() {
   const ready = state.useFlex && state.calibrated;
   const bendOf = (i) => (ready ? Math.min(1, Math.max(0, state.delta[i] / state.fullBend[i])) : 0);
   for (const finger of $('hand').querySelectorAll('.finger')) {
-    const i = Number(finger.dataset.finger), bend = bendOf(i);
+    // Unused fingers follow the ring finger so a fist never shows them standing up.
+    const i = Number(finger.dataset.finger), bend = bendOf(UNUSED_FINGERS.includes(i) ? 3 : i);
     finger.style.transform = `scaleY(${1 - 0.4 * bend})`;
     // Learned mode colours by the finger's own recorded range, since weak sensors never reach a trigger.
     finger.dataset.bent = String(ready && (state.shapeMode === 'learned' ? bend >= 0.6 : state.pattern[i] === '1'));
     const chip = $('finger-chips').children[i];
     chip.dataset.bent = finger.dataset.bent;
+    finger.dataset.unused = chip.dataset.unused = String(UNUSED_FINGERS.includes(i));
   }
   const shape = ready && state.shape ? state.shape : null, learned = state.shapeMode === 'learned';
-  $('hand-shape').textContent = state.job ? (state.recording >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? SHAPE_NAMES[shape] : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
+  $('hand-shape').textContent = state.job ? (state.recording >= 0 || state.recordingMotion >= 0 ? 'Recording…' : 'Calibrating…') : !state.useFlex ? 'Flex off' : !state.calibrated ? 'Not calibrated' : shape ? GESTURES[shape]?.name ?? shape : learned || /^.000/.test(state.pattern) ? 'Open hand' : 'No shape';
   const recorded = state.shapesTrained.filter(Boolean).length;
   $('shape-mode').textContent = learned ? 'Matching your recorded shapes' : `Using bend triggers · ${recorded} of 4 shapes recorded`;
+  [...$('motion-rows').children].forEach((row, i) => {
+    const status = row.querySelector('.state'), count = state.motionsTrained[i];
+    status.textContent = state.recordingMotion === i ? 'Recording…' : `${count} of 3 recorded`;
+    status.dataset.done = String(count > 0);
+    row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
+  });
   [...$('shape-rows').children].forEach((row, i) => {
     const status = row.querySelector('.state');
     status.textContent = state.recording === i ? 'Recording…' : state.shapesTrained[i] ? 'Recorded' : 'Not recorded';
@@ -120,7 +130,9 @@ function renderHand() {
   $('speed-fill').style.width = `${Math.min(100, speed / 3)}%`;
   $('speed-fill').dataset.moving = String(speed > 90);
   const motion = state.motion;
-  if (motion?.energy) $('motion-summary').textContent = motion.result ? `Last motion: ${GESTURES[motion.result]?.name ?? motion.result}` : 'Last motion not recognized. Try a bigger, cleaner movement.';
+  const motionSource = state.motionMode === 'learned' ? 'your recordings' : 'built-in rules';
+  if (!motion?.energy) $('motion-summary').textContent = `Motions use ${motionSource}.`;
+  else $('motion-summary').textContent = motion.result ? `Last motion: ${GESTURES[motion.result]?.name ?? motion.result} · ${motionSource}` : `Last motion not recognized (${motionSource}). Try a bigger, cleaner movement.`;
 }
 function addHistory(key, text, type, detail) {
   let item = rows.get(key);
@@ -193,7 +205,7 @@ function receive(input) {
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
-  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s` : 'No motion analysed yet.';
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s${motion.distance >= 0 ? ` · match distance ${Number(motion.distance).toFixed(2)} (limit 0.50)` : ''}` : 'No motion analysed yet.';
   // Ignore a snapshot taken before the glove applied a just-clicked environment.
   const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
   if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
@@ -263,6 +275,13 @@ function init() {
     button.type = 'button'; button.textContent = 'Record'; button.disabled = true; button.onclick = () => run('trainShape', { index });
     copy.append(title, how); row.dataset.shape = key; row.append(copy, status, button); $('shape-rows').append(row);
   });
+  Object.entries(GESTURES).filter(([, gesture]) => gesture.kind === 'motion').forEach(([key, gesture], index) => {
+    const row = document.createElement('li'), copy = document.createElement('div'), title = document.createElement('span');
+    const how = document.createElement('small'), status = document.createElement('span'), button = document.createElement('button');
+    title.textContent = gesture.name; how.textContent = gesture.how; status.className = 'state'; status.textContent = 'Waiting for glove';
+    button.type = 'button'; button.textContent = 'Record'; button.disabled = true; button.onclick = () => run('trainMotion', { index });
+    copy.append(title, how); row.dataset.motion = key; row.append(copy, status, button); $('motion-rows').append(row);
+  });
   for (const name of fingerNames) {
     const chip = document.createElement('li'); chip.textContent = name; $('finger-chips').append(chip);
     const row = document.createElement('li'), label = document.createElement('span'), track = document.createElement('div');
@@ -272,6 +291,7 @@ function init() {
     input.setAttribute('aria-label', `${name} bend trigger`);
     input.oninput = () => { bendDirty = true; bendLabel(value, state?.delta[fingerNames.indexOf(name)] ?? '—', input.value); availability(); };
     track.append(live, input); row.append(label, track, value); $('bend-rows').append(row);
+    row.dataset.unused = String(UNUSED_FINGERS.includes(fingerNames.indexOf(name)));
   }
   for (const [key, gesture] of Object.entries(GESTURES)) {
     const item = document.createElement('li'); item.dataset.gesture = key; item.dataset.kind = gesture.kind;
@@ -287,6 +307,7 @@ function init() {
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
   $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
     try { await command('bend', { values: [...$('bend-rows').querySelectorAll('input')].map((input) => Number(input.value)) }); bendDirty = false; availability(); }
