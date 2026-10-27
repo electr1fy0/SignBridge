@@ -33,6 +33,7 @@ function availability() {
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
+  $('morse-test').disabled = !online || state?.buzzer === 'off';
   for (const button of $('quick-replies').querySelectorAll('button')) button.disabled = !online;
 }
 function connection(connected, label) {
@@ -112,10 +113,10 @@ function renderHand() {
     row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
   [...$('shape-rows').children].forEach((row, i) => {
-    const status = row.querySelector('.state');
-    status.textContent = state.recording === i ? 'Recording…' : state.shapesTrained[i] ? 'Recorded' : 'Not recorded';
-    status.dataset.done = String(Boolean(state.shapesTrained[i]));
-    row.querySelector('button').textContent = state.shapesTrained[i] ? 'Record again' : 'Record';
+    const status = row.querySelector('.state'), count = state.shapesTrained[i];
+    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded`;
+    status.dataset.done = String(count > 0);
+    row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
@@ -213,7 +214,7 @@ function receive(input) {
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
-  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; }
+  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; $('buzzer').value = state.buzzer; }
   availability();
 }
 function reconnect() {
@@ -307,6 +308,7 @@ function init() {
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('morse-test').onclick = () => run('morseTest');
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
   $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
@@ -322,7 +324,7 @@ function init() {
   $('settings').oninput = () => { settingsDirty = true; };
   $('settings').onsubmit = async (event) => {
     event.preventDefault();
-    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
+    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked, buzzer: $('buzzer').value }); settingsDirty = false; }
     catch (error) { feedback(error.message, true); }
   };
   $('clear').onclick = () => { rows.clear(); $('history').replaceChildren(); $('history-empty').hidden = true; $('history-empty').textContent = 'Conversation cleared on this screen.'; $('history-empty').hidden = false; };

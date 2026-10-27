@@ -4,7 +4,7 @@
  * Install only "esp32 by Espressif Systems" (Arduino core 3.x).
  *
  * Flex T/I/M/R/P: 33/35/36/34/32. MOVE MIDDLE FROM GPIO25 TO GPIO36.
- * MPU SDA/SCL: 21/22. LCD SDA/SCL: 18/19. Motor DRIVER control: 26.
+ * MPU SDA/SCL: 21/22. LCD SDA/SCL: 18/19. Motor DRIVER control: 26. Buzzer signal: 27.
  * Join Wi-Fi SignBridge, password signbridge, open http://192.168.4.1.
  * Keep hand flat, straight and still during startup calibration.
  * No gesture training: 4 hand shapes (fist, point, pinky, index+pinky) and
@@ -231,6 +231,8 @@ th { color: var(--secondary); font-weight: 500; }
 .settings label { display: flex; align-items: flex-start; gap: 10px; margin: 12px 0; font-size: 15px; }
 .settings input { margin-top: 4px; width: 17px; height: 17px; accent-color: var(--accent); }
 .settings button { margin-top: 12px; }
+.settings label.select-row { flex-direction: column; align-items: stretch; gap: 6px; max-width: 520px; }
+.settings label.select-row select { margin-top: 0; }
 
 footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
 
@@ -321,7 +323,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <p class="secondary small">Calibration runs at startup and records the straight-hand flex readings and the still gyro. Re-run it whenever the glove is put on again: straighten your fingers and hold your hand flat and still. Serial output is 115200 baud.</p>
       <section class="bend-panel" aria-labelledby="learn-heading">
         <h3 id="learn-heading">Learn hand shapes</h3>
-        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Record each shape once: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Once all four are recorded, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
+        <p class="secondary small">Hand shapes use only the thumb, ring and pinky sensors. Record each shape up to three times: press Record, make the shape during the 3-second countdown, and hold it for 2 seconds. Vary it slightly between recordings the way you naturally would. Once every shape has at least one recording, the glove matches your hand against these recordings instead of the bend triggers. Weak sensors still help as long as they change the same way each time. Recalibrating keeps the recordings.</p>
         <ul id="shape-rows" class="shape-rows"></ul>
         <div class="tools-actions"><button id="clear-shapes" type="button" disabled>Clear recordings</button></div>
       </section>
@@ -340,7 +342,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><button id="save-settings" type="submit" disabled>Save hardware settings</button></form>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><label class="select-row">Buzzer on GPIO27: spells replies in Morse code and beeps SOS for Shake<select id="buzzer"><option value="off">Not connected</option><option value="low">Active module, beeps when its signal pin is LOW (most 3-pin modules)</option><option value="high">Active module, beeps when its signal pin is HIGH</option><option value="passive">Passive buzzer (needs a tone)</option></select></label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><div class="tools-actions"><button id="save-settings" type="submit" disabled>Save hardware settings</button><button id="morse-test" type="button" disabled>Test buzzer (SOS)</button></div></form>
     </details>
   </main>
   <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
@@ -818,7 +820,8 @@ function consumeEvents(cursor, state) {
 }
 
 function replyDelivery(event) {
-  return event.lcd ? `Written to glove LCD${event.haptic ? '; vibration triggered' : ''}` : 'Received by glove; LCD unavailable';
+  const extras = `${event.haptic ? '; vibration triggered' : ''}${event.buzzer ? '; spelled in Morse on the buzzer' : ''}`;
+  return event.lcd ? `Written to glove LCD${extras}` : `Received by glove; LCD unavailable${extras}`;
 }
 
 
@@ -851,6 +854,7 @@ function availability() {
   $('cancel').disabled = !online || !busy;
   for (const id of ['live', 'debug']) $(id).disabled = !online;
   $('save-settings').disabled = !online || busy;
+  $('morse-test').disabled = !online || state?.buzzer === 'off';
   for (const button of $('quick-replies').querySelectorAll('button')) button.disabled = !online;
 }
 function connection(connected, label) {
@@ -930,10 +934,10 @@ function renderHand() {
     row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
   [...$('shape-rows').children].forEach((row, i) => {
-    const status = row.querySelector('.state');
-    status.textContent = state.recording === i ? 'Recording…' : state.shapesTrained[i] ? 'Recorded' : 'Not recorded';
-    status.dataset.done = String(Boolean(state.shapesTrained[i]));
-    row.querySelector('button').textContent = state.shapesTrained[i] ? 'Record again' : 'Record';
+    const status = row.querySelector('.state'), count = state.shapesTrained[i];
+    status.textContent = state.recording === i ? 'Recording…' : `${count} of 3 recorded`;
+    status.dataset.done = String(count > 0);
+    row.querySelector('button').textContent = count >= 3 ? 'Replace oldest' : 'Record';
   });
   $('hand-shape').dataset.shape = String(Boolean(shape));
   [...$('bend-rows').children].forEach((row, i) => {
@@ -1031,7 +1035,7 @@ function receive(input) {
   for (const [id, enabled, label] of [['live', state.live, 'Serial values'], ['debug', state.debug, 'Serial motion details']]) {
     $(id).textContent = `${label}: ${enabled ? 'on' : 'off'}`; $(id).setAttribute('aria-pressed', String(enabled));
   }
-  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; }
+  if (!settingsDirty) { $('use-flex').checked = state.useFlex; $('use-motor').checked = state.useMotor; $('buzzer').value = state.buzzer; }
   availability();
 }
 function reconnect() {
@@ -1125,6 +1129,7 @@ function init() {
   $('reply-form').onsubmit = (event) => { event.preventDefault(); sendReply($('reply-text').value); };
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
+  $('morse-test').onclick = () => run('morseTest');
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
   $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
@@ -1140,7 +1145,7 @@ function init() {
   $('settings').oninput = () => { settingsDirty = true; };
   $('settings').onsubmit = async (event) => {
     event.preventDefault();
-    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked }); settingsDirty = false; }
+    try { await command('settings', { useFlex: $('use-flex').checked, useMotor: $('use-motor').checked, buzzer: $('buzzer').value }); settingsDirty = false; }
     catch (error) { feedback(error.message, true); }
   };
   $('clear').onclick = () => { rows.clear(); $('history').replaceChildren(); $('history-empty').hidden = true; $('history-empty').textContent = 'Conversation cleared on this screen.'; $('history-empty').hidden = false; };
@@ -1205,9 +1210,9 @@ constexpr int SHAKE_SWINGS = 5, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
 constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
 // Learned shapes: each recording is 2 s of flex samples; live matching uses the mean of the
 // last 4 samples (400 ms). SIGMA_MIN keeps a very steady finger from dominating the match.
-constexpr int SHAPE_N = 4, TRAIN_SAMPLES = 20, AVG_N = 4;
+constexpr int SHAPE_N = 4, SHAPE_EXAMPLES = 3, TRAIN_SAMPLES = 20, AVG_N = 4;
 constexpr float SIGMA_MIN = 6;
-constexpr uint32_t SHAPE_MAGIC = 0x53484151;  // changed when the shape set changed
+constexpr uint32_t SHAPE_MAGIC = 0x53484152;  // changed whenever the shape set or layout changes
 static_assert(G_FIST == 0 && G_CALL == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
 // Learned motions: up to three recordings each. A movement takes the nearest recording's
 // motion when its weighted feature distance is at most MOTION_LIMIT; anything further is ignored.
@@ -1217,6 +1222,14 @@ constexpr float FEATURE_WEIGHT[NF] = {1, 1, 1, 1, 1, 1, 1, 0.7f, 0.7f, 1};
 constexpr uint32_t MOTION_MAGIC = 0x4D4F5432;
 static_assert(G_WAVE == SHAPE_N && G_SHAKE == G_WAVE + MOTION_N - 1, "Recorded motion slots must follow the shapes");
 constexpr int MOTOR_PIN = 26;
+// 3-pin buzzer module signal pin. Replies are spelled in Morse code; Shake beeps SOS.
+constexpr int BUZZER_PIN = 27, MORSE_UNIT_MS = 90, BUZZER_TONE_HZ = 2000, MORSE_MAX = 160;
+// Active modules beep on their own when driven (some on HIGH, many on LOW); passive ones need a tone.
+enum class Buzzer : uint8_t { Off, ActiveHigh, ActiveLow, Passive };
+const char* const buzzerNames[] = {"off", "high", "low", "passive"};
+const char* const MORSE_LETTERS[26] = {".-","-...","-.-.","-..",".","..-.","--.","....","..",".---","-.-",".-..","--",
+  "-.","---",".--.","--.-",".-.","...","-","..-","...-",".--","-..-","-.--","--.."};
+const char* const MORSE_DIGITS[10] = {"-----",".----","..---","...--","....-",".....","-....","--...","---..","----."};
 TwoWire lcdWire(1);
 Preferences prefs;
 httpd_handle_t server = nullptr;
@@ -1226,6 +1239,7 @@ std::atomic<bool> broadcastPending{false};
 String snapshot;
 
 bool useFlex = true, useMotor = false;
+Buzzer buzzer = Buzzer::Off;
 bool liveOutput = true, debugOn = false;
 bool mpuOK = false, lcdOK = false, lcdError = false;
 bool flexReady = false, imuReady = false;
@@ -1243,7 +1257,8 @@ uint32_t restSince = 0, cooldownAt = 0;
 int shapeCandidate = -1, heldShape = -1, lastGesture = -1;
 uint32_t candidateAt = 0;
 // Mean and variance of each finger's signed change from calibration, per recorded shape.
-struct ShapeModel { uint32_t magic; uint8_t trained[SHAPE_N]; float mean[SHAPE_N][5], var[SHAPE_N][5]; };
+// Up to three recordings per shape; matching uses whichever recording is closest.
+struct ShapeModel { uint32_t magic; uint8_t count[SHAPE_N], next[SHAPE_N]; float mean[SHAPE_N][SHAPE_EXAMPLES][5], var[SHAPE_N][SHAPE_EXAMPLES][5]; };
 ShapeModel model = {SHAPE_MAGIC};
 float openVar[5] = {}, trainSums[5] = {}, trainSq[5] = {};
 double flexSq[5] = {};  // double: squared 12-bit readings summed over calibration
@@ -1264,7 +1279,7 @@ bool replyActive = false;
 struct Event {
   uint32_t seq;
   char type[8], text[161], source[8], requestId[40], env[12];
-  bool lcd, haptic;
+  bool lcd, haptic, buzzer;
 };
 constexpr int HISTORY = 12;
 Event history[HISTORY] = {};
@@ -1276,6 +1291,7 @@ struct Command {
   char op[20], id[40], text[161], lines[2][17], vib[9];
   int index;
   bool value, flex, motor, reset;
+  uint8_t buzzer;
   int bend[5];
 };
 enum class Job { Idle, CalPrep, CalSample, ShapePrep, ShapeSample, MotionPrep, MotionWait, MotionCapture };
@@ -1291,6 +1307,13 @@ struct Vibration {
   uint32_t at = 0;
   bool active = false;
 } vibration;
+// Beep schedule: symbol n sounds for on[n] ms, then stays quiet for off[n] ms.
+struct Morse {
+  uint16_t on[MORSE_MAX], off[MORSE_MAX];
+  uint8_t count = 0, index = 0;
+  uint32_t at = 0;
+  bool active = false, sounding = false;
+} morse;
 
 void setNotice(const char* text) {
   strlcpy(notice, text, sizeof(notice));
@@ -1358,10 +1381,10 @@ int handShape() {
   return G_CALL;
 }
 bool learnedReady() {
-  for (int c = 0; c < SHAPE_N; ++c) if (!model.trained[c]) return false;
+  for (int c = 0; c < SHAPE_N; ++c) if (!model.count[c]) return false;
   return true;
 }
-// Nearest recorded shape, with the straight calibrated hand as the "no shape" class.
+// Nearest recording of any shape, with the straight calibrated hand as the "no shape" class.
 // Each finger is scaled by its pooled spread, so a sensor that changes only a little but
 // consistently still counts, while a jittery one counts for less.
 int learnedShape() {
@@ -1369,15 +1392,15 @@ int learnedShape() {
   float x[5] = {}, sigma[5];
   for (int n = 0; n < recentCount; ++n) for (int i = 0; i < 5; ++i) x[i] += recent[n][i] / recentCount;
   for (int i = 0; i < 5; ++i) {
-    float v = openVar[i];
-    for (int c = 0; c < SHAPE_N; ++c) v += model.var[c][i];
-    sigma[i] = max(SIGMA_MIN, sqrtf(v / (SHAPE_N + 1)));
+    float v = openVar[i]; int n = 1;
+    for (int c = 0; c < SHAPE_N; ++c) for (int e = 0; e < model.count[c]; ++e) { v += model.var[c][e][i]; ++n; }
+    sigma[i] = max(SIGMA_MIN, sqrtf(v / n));
   }
   float best = 0; int bestShape = -1;
   for (int i = 0; i < 5; ++i) if (SHAPE_FINGER[i]) best += sq(x[i] / sigma[i]);
-  for (int c = 0; c < SHAPE_N; ++c) {
+  for (int c = 0; c < SHAPE_N; ++c) for (int e = 0; e < model.count[c]; ++e) {
     float d = 0;
-    for (int i = 0; i < 5; ++i) if (SHAPE_FINGER[i]) d += sq((x[i] - model.mean[c][i]) / sigma[i]);
+    for (int i = 0; i < 5; ++i) if (SHAPE_FINGER[i]) d += sq((x[i] - model.mean[c][e][i]) / sigma[i]);
     if (d < best) { best = d; bestShape = c; }
   }
   shapeDistance = sqrtf(best);
@@ -1475,12 +1498,70 @@ void tickVibration() {
   vibration.active = vibration.index < vibration.count;
   digitalWrite(MOTOR_PIN, vibration.active && vibration.index % 2 == 0 ? HIGH : LOW);
 }
-void addEvent(const char* type, const char* text, const char* source, const char* requestId = "", bool lcd = false, bool haptic = false) {
+bool toneUsed = false;
+void buzzerWrite(bool on) {
+  if (buzzer == Buzzer::ActiveHigh) digitalWrite(BUZZER_PIN, on ? HIGH : LOW);
+  else if (buzzer == Buzzer::ActiveLow) digitalWrite(BUZZER_PIN, on ? LOW : HIGH);
+  else if (buzzer == Buzzer::Passive) { if (on) { tone(BUZZER_PIN, BUZZER_TONE_HZ); toneUsed = true; } else noTone(BUZZER_PIN); }
+}
+void stopMorse() {
+  if (morse.active) buzzerWrite(false);
+  morse.active = morse.sounding = false;
+}
+// Puts the pin in the buzzer type's quiet state. Off leaves it floating so no module type beeps.
+void applyBuzzerPin() {
+  stopMorse();
+  // The core's tone task detaches the pin asynchronously; let it finish before reconfiguring.
+  if (toneUsed) { noTone(BUZZER_PIN); delay(30); toneUsed = false; }
+  if (buzzer == Buzzer::Off) pinMode(BUZZER_PIN, INPUT);
+  else { pinMode(BUZZER_PIN, OUTPUT); buzzerWrite(false); }
+}
+const char* morseCode(char c) {
+  if (c >= 'A' && c <= 'Z') return MORSE_LETTERS[c - 'A'];
+  if (c >= '0' && c <= '9') return MORSE_DIGITS[c - '0'];
+  switch (c) {
+    case '.': return ".-.-.-"; case ',': return "--..--"; case '?': return "..--..";
+    case '\'': return ".----."; case '!': return "-.-.--"; case '-': return "-....-";
+    default: return nullptr;
+  }
+}
+// Standard timing: dot 1 unit, dash 3, gap 1 inside a letter, 3 between letters, 7 between words.
+bool startMorse(const char* text) {
+  stopMorse();
+  if (buzzer == Buzzer::Off) return false;
+  int n = 0, wordGap = 0;
+  for (const char* p = text; *p && n < MORSE_MAX; ++p) {
+    char c = toupper(*p);
+    if (c == ' ') { wordGap = 7; continue; }
+    const char* code = morseCode(c);
+    if (!code) continue;
+    if (n) morse.off[n - 1] = max(wordGap, 3) * MORSE_UNIT_MS;
+    for (int k = 0; code[k] && n < MORSE_MAX; ++k, ++n) {
+      morse.on[n] = (code[k] == '.' ? 1 : 3) * MORSE_UNIT_MS; morse.off[n] = MORSE_UNIT_MS;
+    }
+    wordGap = 0;
+  }
+  if (!n) return false;
+  morse.count = n; morse.index = 0; morse.at = millis(); morse.active = morse.sounding = true;
+  buzzerWrite(true);
+  return true;
+}
+void tickMorse() {
+  if (!morse.active) return;
+  uint32_t now = millis();
+  if (now - morse.at < (morse.sounding ? morse.on[morse.index] : morse.off[morse.index])) return;
+  morse.at = now;
+  if (morse.sounding) {
+    buzzerWrite(false); morse.sounding = false;
+    if (morse.index + 1 >= morse.count) morse.active = false;
+  } else { ++morse.index; morse.sounding = true; buzzerWrite(true); }
+}
+void addEvent(const char* type, const char* text, const char* source, const char* requestId = "", bool lcd = false, bool haptic = false, bool beeped = false) {
   Event& e = history[historyNext]; e = {};
   e.seq = ++eventSeq; strlcpy(e.type, type, sizeof(e.type)); strlcpy(e.text, text, sizeof(e.text));
   strlcpy(e.source, source, sizeof(e.source)); strlcpy(e.requestId, requestId, sizeof(e.requestId));
   strlcpy(e.env, envIds[env], sizeof(e.env));
-  e.lcd = lcd; e.haptic = haptic;
+  e.lcd = lcd; e.haptic = haptic; e.buzzer = beeped;
   historyNext = (historyNext + 1) % HISTORY; historyCount = min(historyCount + 1, HISTORY);
 }
 // Events carry the gesture key plus the environment; the website shows the full phrase.
@@ -1488,7 +1569,9 @@ void showGesture(int g, const char* source) {
   lastGesture = g; lastSignAt = millis(); replyActive = false;
   Serial.printf(">>> RECOGNIZED: %s <<<\n", gestureNames[g]);
   Serial.printf("MEANING (%s): %s %s\n", envIds[env], phraseLcd[env][g][0], phraseLcd[env][g][1]);
-  addEvent("sign", gestureNames[g], source); updateLCD();
+  // The emergency gesture also sounds SOS so people nearby notice.
+  bool beeped = g == G_SHAKE && startMorse("SOS SOS");
+  addEvent("sign", gestureNames[g], source, "", false, false, beeped); updateLCD();
 }
 void resetRecognition() {
   shapeCandidate = heldShape = -1; candidateAt = 0;
@@ -1497,6 +1580,8 @@ void resetRecognition() {
 }
 void loadSettings() {
   useFlex = prefs.getBool("useFlex", true); useMotor = prefs.getBool("useMotor", false);
+  uint8_t savedBuzzer = prefs.getUChar("buzzer", 0);
+  buzzer = savedBuzzer <= uint8_t(Buzzer::Passive) ? Buzzer(savedBuzzer) : Buzzer::Off;
   env = prefs.getUChar("env", 0);
   int saved[5];
   bool valid = prefs.getBytesLength("bendOn") == sizeof(saved) && prefs.getBytes("bendOn", saved, sizeof(saved)) == sizeof(saved);
@@ -1504,8 +1589,11 @@ void loadSettings() {
   memcpy(bendOn, valid ? saved : DEFAULT_BEND_ON, sizeof(bendOn));
   ShapeModel stored = {};
   bool shapesValid = prefs.getBytesLength("shapes") == sizeof(stored) && prefs.getBytes("shapes", &stored, sizeof(stored)) == sizeof(stored) && stored.magic == SHAPE_MAGIC;
-  for (int c = 0; shapesValid && c < SHAPE_N; ++c) for (int i = 0; i < 5; ++i)
-    shapesValid = isfinite(stored.mean[c][i]) && isfinite(stored.var[c][i]) && stored.var[c][i] >= 0;
+  for (int c = 0; shapesValid && c < SHAPE_N; ++c) {
+    shapesValid = stored.count[c] <= SHAPE_EXAMPLES && stored.next[c] < SHAPE_EXAMPLES;
+    for (int e = 0; shapesValid && e < stored.count[c]; ++e) for (int i = 0; i < 5; ++i)
+      shapesValid = shapesValid && isfinite(stored.mean[c][e][i]) && isfinite(stored.var[c][e][i]) && stored.var[c][e][i] >= 0;
+  }
   if (shapesValid) model = stored;
   MotionModel storedMotions = {};
   bool motionsValid = prefs.getBytesLength("motions") == sizeof(storedMotions) && prefs.getBytes("motions", &storedMotions, sizeof(storedMotions)) == sizeof(storedMotions) && storedMotions.magic == MOTION_MAGIC;
@@ -1692,17 +1780,17 @@ void tickJob(bool flexSampled) {
       if (!flexSampled) break;
       for (int i = 0; i < 5; ++i) { float v = filtered[i] - baseline[i]; trainSums[i] += v; trainSq[i] += v * v; }
       if (++sampleCount >= TRAIN_SAMPLES) {
-        int c = shapeTrainIndex, trained = 0;
+        int c = shapeTrainIndex, slot = model.next[c], trained = 0;
         for (int i = 0; i < 5; ++i) {
-          model.mean[c][i] = trainSums[i] / sampleCount;
-          model.var[c][i] = max(0.0f, trainSq[i] / sampleCount - sq(model.mean[c][i]));
+          model.mean[c][slot][i] = trainSums[i] / sampleCount;
+          model.var[c][slot][i] = max(0.0f, trainSq[i] / sampleCount - sq(model.mean[c][slot][i]));
         }
-        model.trained[c] = 1;
-        for (int g = 0; g < SHAPE_N; ++g) trained += model.trained[g];
+        model.next[c] = (slot + 1) % SHAPE_EXAMPLES; model.count[c] = min(model.count[c] + 1, SHAPE_EXAMPLES);
+        for (int g = 0; g < SHAPE_N; ++g) trained += model.count[g] > 0;
         bool saved = prefs.putBytes("shapes", &model, sizeof(model)) == sizeof(model);
         char message[160];
-        snprintf(message, sizeof(message), "%s recorded%s. %d of %d shapes recorded%s", gestureNames[c], saved ? "" : " (flash save failed)",
-          trained, SHAPE_N, trained == SHAPE_N ? "; learned detection is on." : ".");
+        snprintf(message, sizeof(message), "%s recording %d of %d saved%s. %s", gestureNames[c], model.count[c], SHAPE_EXAMPLES,
+          saved ? "" : " (flash save failed)", trained == SHAPE_N ? "Learned shape detection is on." : "Record every shape at least once to switch to learned detection.");
         finishJob(message);
       }
       break;
@@ -1767,7 +1855,10 @@ void execute(const Command& c) {
     if (c.lines[0][0] || c.lines[1][0]) memcpy(replyLines, c.lines, sizeof(replyLines)); else lcdWrap(c.text, replyLines);
     replyActive = true; replyAt = millis(); updateLCD(); startVibration(c.vib);
     bool displayed = lcdOK && !lcdError;
-    addEvent("reply", c.text, "partner", c.id, displayed, useMotor);
+    // Morse spells what the LCD shows, so long replies stay short on the buzzer.
+    char spoken[34]; snprintf(spoken, sizeof(spoken), "%s %s", replyLines[0], replyLines[1]);
+    bool beeped = startMorse(spoken);
+    addEvent("reply", c.text, "partner", c.id, displayed, useMotor, beeped);
     Serial.printf("ACK|%s|LCD=%s\n", c.id, displayed ? "OK" : "FAIL");
     setNotice(displayed ? "Reply written to the LCD." : "Reply received; LCD unavailable. Check its wiring.");
   } else if (!strcmp(c.op, "trainShape")) startShapeTraining(c.index);
@@ -1778,12 +1869,15 @@ void execute(const Command& c) {
     if (job == Job::Idle) startCalibration(); else setNotice("Finish or cancel the current task first.");
   } else if (!strcmp(c.op, "env")) setEnvironment(c.index);
   else if (!strcmp(c.op, "cancel")) finishJob("Task cancelled. Previous calibration retained.");
+  else if (!strcmp(c.op, "morseTest")) setNotice(startMorse("SOS") ? "Buzzer: playing SOS in Morse." : "Buzzer is off. Choose its type under Connected hardware.");
   else if (!strcmp(c.op, "live")) { liveOutput = c.value; Serial.printf("Live readings: %s\n", liveOutput ? "ON" : "OFF"); }
   else if (!strcmp(c.op, "debug")) { debugOn = c.value; Serial.printf("Debug: %s\n", debugOn ? "ON" : "OFF"); }
   else if (!strcmp(c.op, "settings")) {
     if (job != Job::Idle) { setNotice("Finish or cancel the current task before changing sensors."); return; }
-    useFlex = c.flex; useMotor = c.motor;
-    prefs.putBool("useFlex", useFlex); prefs.putBool("useMotor", useMotor);
+    stopMorse();  // silence with the old buzzer type before switching
+    useFlex = c.flex; useMotor = c.motor; buzzer = Buzzer(c.buzzer);
+    prefs.putBool("useFlex", useFlex); prefs.putBool("useMotor", useMotor); prefs.putUChar("buzzer", c.buzzer);
+    applyBuzzerPin();
     if (!useMotor) { vibration.active = false; digitalWrite(MOTOR_PIN, LOW); }
     resetRecognition(); setNotice("Sensor settings saved.");
   } else if (!strcmp(c.op, "bend")) {
@@ -1810,9 +1904,10 @@ void serialInput() {
       else if (!strcmp(line, "mx")) strlcpy(c.op, "clearMotions", sizeof(c.op));
       else if (!strcmp(line, "q")) strlcpy(c.op, "cancel", sizeof(c.op));
       else if (!strcmp(line, "s")) strlcpy(c.op, "status", sizeof(c.op));
+      else if (!strcmp(line, "b")) strlcpy(c.op, "morseTest", sizeof(c.op));
       else if (strlen(line) == 2 && line[0] == 'e' && line[1] >= '1' && line[1] < '1' + ENV_N) { strlcpy(c.op,"env",sizeof(c.op)); c.index = line[1]-'1'; }
       else if (!strncmp(line, "reply ", 6)) { strlcpy(c.op,"reply",sizeof(c.op)); strlcpy(c.text,line+6,sizeof(c.text)); strlcpy(c.id,"serial",sizeof(c.id)); strlcpy(c.vib,"MSG",sizeof(c.vib)); }
-      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, e1..e5 environment, t1..t4 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
+      else { Serial.println("Commands + Enter: p values, d motion details, c calibrate, s status, b buzzer test, e1..e5 environment, t1..t4 record shape, tx clear shapes, m1..m4 record motion, mx clear motions, q cancel, reply TEXT"); continue; }
       execute(c);
     } else if (!overflow) {
       if (used < sizeof(line)-1) line[used++] = ch; else overflow = true;
@@ -1840,6 +1935,7 @@ void publishState() {
   jsonBool(root,"calibrated",flexReady); jsonBool(root,"imuCalibrated",imuReady);
   jsonBool(root,"live",liveOutput); jsonBool(root,"debug",debugOn);
   jsonBool(root,"useFlex",useFlex); jsonBool(root,"useMotor",useMotor);
+  cJSON_AddStringToObject(root,"buzzer",buzzerNames[int(buzzer)]); jsonBool(root,"morse",morse.active);
   addInts(root,"bendOn",bendOn,5);
   cJSON_AddStringToObject(root,"shapeMode",learnedReady() ? "learned" : "triggers");
   cJSON_AddStringToObject(root,"shape",liveShape >= 0 ? gestureNames[liveShape] : "");
@@ -1853,12 +1949,12 @@ void publishState() {
   int fullBend[5];
   for(int i=0;i<5;++i) {
     float largest = 0;
-    for(int c=0;c<SHAPE_N;++c) largest = max(largest, fabsf(model.mean[c][i]));
+    for(int c=0;c<SHAPE_N;++c) for(int e=0;e<model.count[c];++e) largest = max(largest, fabsf(model.mean[c][e][i]));
     fullBend[i] = learnedReady() ? max(20, int(largest)) : bendOn[i];
   }
   addInts(root,"fullBend",fullBend,5);
   cJSON* shapes = cJSON_AddArrayToObject(root,"shapesTrained");
-  for(int c=0;c<SHAPE_N;++c) cJSON_AddItemToArray(shapes,cJSON_CreateBool(model.trained[c]));
+  for(int c=0;c<SHAPE_N;++c) cJSON_AddItemToArray(shapes,cJSON_CreateNumber(model.count[c]));
   cJSON_AddStringToObject(root,"env",envIds[env]);
   cJSON_AddStringToObject(root,"ip",WiFi.softAPIP().toString().c_str());
   cJSON_AddStringToObject(root,"stationIp",WiFi.status() == WL_CONNECTED ? WiFi.localIP().toString().c_str() : "");
@@ -1876,7 +1972,7 @@ void publishState() {
     cJSON_AddNumberToObject(item,"seq",e.seq); cJSON_AddStringToObject(item,"type",e.type);
     cJSON_AddStringToObject(item,"text",e.text); cJSON_AddStringToObject(item,"source",e.source);
     cJSON_AddStringToObject(item,"env",e.env);
-    cJSON_AddStringToObject(item,"requestId",e.requestId); jsonBool(item,"lcd",e.lcd); jsonBool(item,"haptic",e.haptic);
+    cJSON_AddStringToObject(item,"requestId",e.requestId); jsonBool(item,"lcd",e.lcd); jsonBool(item,"haptic",e.haptic); jsonBool(item,"buzzer",e.buzzer);
     cJSON_AddItemToArray(events,item);
   }
   char* encoded = cJSON_PrintUnformatted(root);
@@ -1965,7 +2061,10 @@ esp_err_t commandHandler(httpd_req_t* req) {
     cJSON* flex=cJSON_GetObjectItemCaseSensitive(root,"useFlex"), *motor=cJSON_GetObjectItemCaseSensitive(root,"useMotor");
     valid &= cJSON_IsBool(flex) && cJSON_IsBool(motor);
     c.flex=cJSON_IsTrue(flex); c.motor=cJSON_IsTrue(motor);
-  } else if(strcmp(op,"calibrate") && strcmp(op,"cancel") && strcmp(op,"status") && strcmp(op,"clearShapes") && strcmp(op,"clearMotions")) valid=false;
+    const char* mode=jsonString(root,"buzzer"); int found=-1;
+    for(int b=0;b<4;++b) if(!strcmp(mode,buzzerNames[b])) found=b;
+    valid &= found>=0; c.buzzer=found>=0 ? found : 0;
+  } else if(strcmp(op,"calibrate") && strcmp(op,"cancel") && strcmp(op,"status") && strcmp(op,"clearShapes") && strcmp(op,"clearMotions") && strcmp(op,"morseTest")) valid=false;
   cJSON_Delete(root);
   if(!valid) { httpd_resp_send_err(req,HTTPD_400_BAD_REQUEST,"Invalid command or fields"); return ESP_OK; }
   if(xQueueSend(commandQueue,&c,0)!=pdTRUE) {
@@ -1990,7 +2089,7 @@ void setupApp() {
   Wire.begin(21,22); Wire.setClock(400000); Wire.setTimeOut(20);
   lcdWire.begin(18,19); lcdWire.setClock(100000); lcdWire.setTimeOut(20);
   mpuOK=initMPU(); lcdOK=initLCD();
-  prefs.begin("signbridge",false); loadSettings();
+  prefs.begin("signbridge",false); loadSettings(); applyBuzzerPin();
   snprintf(bootId,sizeof(bootId),"%08lx",(unsigned long)esp_random());
   commandQueue=xQueueCreate(8,sizeof(Command)); snapshotMutex=xSemaphoreCreateMutex();
   if(!commandQueue || !snapshotMutex) { Serial.println("Insufficient memory to start"); while(true) delay(1000); }
@@ -2004,7 +2103,7 @@ void setupApp() {
 void loopApp() {
   serialInput(); Command c={};
   if(xQueueReceive(commandQueue,&c,0)==pdTRUE) execute(c);
-  tickVibration(); uint32_t now=millis();
+  tickVibration(); tickMorse(); uint32_t now=millis();
   if(now-lastSample>=SAMPLE_MS) {
     lastSample=now;
     bool flexSampled = now-lastFlexSample>=FLEX_SAMPLE_MS;

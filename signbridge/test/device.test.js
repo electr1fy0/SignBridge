@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateState, consumeEvents, replyDelivery } from '../public/js/device.js';
-const makeState = (events = [], boot = 'boot-a') => ({ type: 'state', boot, uptime: 1234, flex: [0,0,0,0,0], delta: [0,0,0,0,0], baseline: [0,0,0,0,0], acc: [0,0,9.81], gyro: [0,0,0], bendOn: [150,100,100,130,110], fullBend: [150,100,100,130,110], shapesTrained: [false,false,false,false], motionsTrained: [0,0,0,0], env: 'everyday', events });
+const makeState = (events = [], boot = 'boot-a') => ({ type: 'state', boot, uptime: 1234, flex: [0,0,0,0,0], delta: [0,0,0,0,0], baseline: [0,0,0,0,0], acc: [0,0,9.81], gyro: [0,0,0], bendOn: [150,100,100,130,110], fullBend: [150,100,100,130,110], shapesTrained: [0,0,0,0], motionsTrained: [0,0,0,0], env: 'everyday', events });
 const sign = (seq, text = 'FIST') => ({ seq, type: 'sign', source: 'flex', env: 'everyday', text });
 test('initial device history is visible without replaying old speech', () => {
   const result = consumeEvents({ boot: null, seq: 0 }, makeState([sign(1), sign(2)]));
@@ -22,6 +22,7 @@ test('restart accepts new low sequence numbers without speaking old device histo
 test('LCD failure never claims hardware delivery', () => {
   assert.equal(replyDelivery({ lcd: false, haptic: false }), 'Received by glove; LCD unavailable');
   assert.match(replyDelivery({ lcd: true, haptic: true }), /Written to glove LCD; vibration triggered/);
+  assert.equal(replyDelivery({ lcd: true, haptic: false, buzzer: true }), 'Written to glove LCD; spelled in Morse on the buzzer');
 });
 test('invalid and incomplete server responses cannot establish a device session', () => {
   assert.throws(() => validateState({ type: 'connected' }), /not running SignBridge/);

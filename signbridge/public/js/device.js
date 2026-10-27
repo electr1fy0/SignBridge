@@ -19,5 +19,6 @@ export function consumeEvents(cursor, state) {
 }
 
 export function replyDelivery(event) {
-  return event.lcd ? `Written to glove LCD${event.haptic ? '; vibration triggered' : ''}` : 'Received by glove; LCD unavailable';
+  const extras = `${event.haptic ? '; vibration triggered' : ''}${event.buzzer ? '; spelled in Morse on the buzzer' : ''}`;
+  return event.lcd ? `Written to glove LCD${extras}` : `Received by glove; LCD unavailable${extras}`;
 }

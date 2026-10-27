@@ -40,6 +40,7 @@ This pin map targets the **classic ESP32**, not C3/S2/S3 boards.
 | MPU6500 SDA / SCL | 21 / 22 |
 | LCD backpack SDA / SCL | 18 / 19 |
 | Optional vibration motor driver control | 26 |
+| Optional 3-pin buzzer module signal (S / I/O) | 27 |
 
 All flex inputs use ADC1 so Wi-Fi can run without the ADC2 conflict. Each flex
 sensor needs its own voltage divider with an output within the ESP32's 3.3 V
@@ -51,6 +52,14 @@ Drive a motor through a suitable transistor/MOSFET driver and flyback diode.
 The middle sensor is sampled and displayed but never used for recognition,
 so its wiring does not affect gestures. If using only the MPU, disable **Use flex sensors** there. Motor output starts
 disabled; enable it only when the driver is connected. Hardware settings persist.
+
+**Buzzer (Morse code).** Wire a 3-pin buzzer module's VCC to 3.3 V (or 5 V if its
+signal input accepts 3.3 V logic), GND to GND and the signal pin to GPIO27, then
+pick its type under Device tools → Connected hardware: most active modules beep
+when the signal is LOW, some when it is HIGH, and passive buzzers need a tone.
+**Test buzzer (SOS)** (or `b` over serial) checks it. Each reply from the website
+is spelled in Morse code as it appears on the LCD (90 ms per dot; letters,
+digits and . , ? ' ! -), and the Shake (emergency) gesture beeps SOS twice.
 
 ## Gestures and environments
 
@@ -96,9 +105,10 @@ the LCD and website show the phrase.
   readings and the still gyro bias. Re-run it (**Recalibrate** on the Live hand
   card, or `c` over serial) after putting the glove on again.
 - **Learned hand shapes** (Device tools → Learn hand shapes, or `t1`…`t4` over
-  serial) suit weak sensors. Record each of the four shapes once: 3-second
-  countdown, then 2 seconds of holding it. When all four are recorded, the glove
-  picks whichever recording (or the straight calibrated hand) is closest to the
+  serial) suit weak sensors. Record each of the four shapes up to three times:
+  3-second countdown, then 2 seconds of holding it. Once every shape has a
+  recording, the glove picks whichever recording (or the straight calibrated
+  hand) is closest to the
   last 400 ms of thumb, ring and pinky readings. Each finger is weighted by how steady it was, so a
   sensor that changes only a little but consistently still separates shapes.
   Recordings are saved and survive recalibration; **Clear recordings** (`tx`)
@@ -123,6 +133,7 @@ Live readings start ON; motion details start OFF.
 | `d` | Toggle motion details (swings, turn, tilt, energy and result) |
 | `c` | Calibrate straight fingers and the still MPU |
 | `s` | Show the environment, gesture meanings and Wi-Fi information |
+| `b` | Test the buzzer: plays SOS in Morse |
 | `e1` … `e5` | Switch environment: everyday, hospital, market, restaurant, classroom |
 | `t1` … `t4` | Record fist, thumbs up, pinky up, call me for learned shapes |
 | `tx` | Clear recorded shapes and use bend triggers again |
