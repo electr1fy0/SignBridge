@@ -55,8 +55,11 @@ disabled; enable it only when the driver is connected. Hardware settings persist
 
 **Buzzer (Morse code).** Wire a 3-pin buzzer module's VCC to 3.3 V (or 5 V if its
 signal input accepts 3.3 V logic), GND to GND and the signal pin to GPIO27, then
-pick its type under Device tools → Connected hardware: most active modules beep
-when the signal is LOW, some when it is HIGH, and passive buzzers need a tone.
+pick its type under Device tools → Connected hardware (it applies immediately):
+most active modules beep when the signal is LOW (the default), some when it is
+HIGH, and passive buzzers need a tone. A constant hiss or tone means the type is
+wrong, the pin was left floating ("Not connected" with a module wired), or the
+module runs from 5 V so 3.3 V never switches it fully off.
 **Test buzzer (SOS)** (or `b` over serial) checks it. Each reply from the website
 is spelled in Morse code as it appears on the LCD (90 ms per dot; letters,
 digits and . , ? ' ! -), and the Shake (emergency) gesture beeps SOS twice.
@@ -86,9 +89,10 @@ the LCD and website show the phrase.
 - **Motions** use the gyroscope and accelerometer and do not depend on how the
   MPU is mounted. Each movement is measured from a still hand until the hand is
   still again, then classified by traits that do not overlap:
-  - *Shake*: 5+ direction changes at 5+ per second (quick, like shaking water off).
+  - *Shake*: 4+ small sweeps (35° or less each) at 3+ per second, a quick jiggle
+    like shaking water off. Waves are told apart by their big sweeps, even when fast.
   - *Flip*: the hand ends turned over (70°+ change in gravity direction), no bounce back.
-  - *Wave*: 2+ direction changes at a relaxed pace.
+  - *Wave*: 2+ big side-to-side sweeps.
   - *Nod*: exactly one out-and-back.
 
   Small bounces below 35% of the movement's peak speed are not counted, so a nod's
@@ -97,7 +101,7 @@ the LCD and website show the phrase.
   replace these rules once every motion has at least one recording. Press Record,
   hold still, and do the motion once when the glove shows MOVE NOW; up to three
   recordings per motion are kept. Each movement is described by which axes moved,
-  how far each turned, swing count and speed, energy and end tilt, and takes the
+  how far each turned, swing count, speed and sweep size, energy and end tilt, and takes the
   nearest recording's motion if its distance is at most `MOTION_LIMIT` (0.5);
   anything further is ignored. Motion details show this distance for tuning.
   **Clear motion recordings** (`mx`) returns to the built-in rules.

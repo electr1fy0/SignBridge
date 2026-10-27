@@ -342,7 +342,7 @@ footer { max-width: 1180px; margin: 0 auto; padding: 0 24px 32px; }
       <div class="table-scroll"><table class="sensors"><caption>Flex sensors <span id="pattern">—</span></caption><thead><tr><th scope="col">Finger</th><th scope="col">GPIO</th><th scope="col">Raw</th><th scope="col">Baseline</th><th scope="col">Change</th></tr></thead><tbody id="sensor-rows"></tbody></table></div>
       <p id="imu-values" class="mono small">Accelerometer and gyroscope unavailable.</p>
       <p id="motion-values" class="mono small">No motion analysed yet.</p>
-      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><label class="select-row">Buzzer on GPIO27: spells replies in Morse code and beeps SOS for Shake<select id="buzzer"><option value="off">Not connected</option><option value="low">Active module, beeps when its signal pin is LOW (most 3-pin modules)</option><option value="high">Active module, beeps when its signal pin is HIGH</option><option value="passive">Passive buzzer (needs a tone)</option></select></label><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><div class="tools-actions"><button id="save-settings" type="submit" disabled>Save hardware settings</button><button id="morse-test" type="button" disabled>Test buzzer (SOS)</button></div></form>
+      <form id="settings" class="settings"><h3>Connected hardware</h3><label><input id="use-flex" type="checkbox" checked> Use flex sensors for hand shapes</label><label><input id="use-motor" type="checkbox"> Vibration motor driver connected to GPIO26</label><label class="select-row">Buzzer on GPIO27: spells replies in Morse code and beeps SOS for Shake<select id="buzzer"><option value="off">Not connected</option><option value="low">Active module, beeps when its signal pin is LOW (most 3-pin modules)</option><option value="high">Active module, beeps when its signal pin is HIGH</option><option value="passive">Passive buzzer (needs a tone)</option></select></label><p class="secondary small">Changing the type applies straight away. If the buzzer hisses or sounds constantly, the type is wrong or the module is powered from 5 V: power it from 3.3 V and try the other active option. A passive buzzer only clicks on the active settings.</p><p class="secondary small">Middle flex input is GPIO36. GPIO25 cannot be used for flex readings with Wi-Fi enabled.</p><div class="tools-actions"><button id="save-settings" type="submit" disabled>Save hardware settings</button><button id="morse-test" type="button" disabled>Test buzzer (SOS)</button></div></form>
     </details>
   </main>
   <footer class="secondary small">Recognition runs on the glove. Voice plays on this device.</footer>
@@ -357,10 +357,10 @@ const GESTURES = {
   THUMB: { name: 'Thumbs up', kind: 'shape', how: 'Fist with the thumb straight up' },
   PINKY: { name: 'Pinky up', kind: 'shape', how: 'Fist with only the pinky straight' },
   CALL: { name: 'Call me', kind: 'shape', how: 'Thumb and pinky out, other fingers closed (🤙)' },
-  WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, wave side to side two or three times at a relaxed pace' },
+  WAVE: { name: 'Wave', kind: 'motion', how: 'Open hand, two or three big side-to-side sweeps' },
   FLIP: { name: 'Flip', kind: 'motion', how: 'Open hand palm down, turn it palm up in one go and hold it there' },
   NOD: { name: 'Nod', kind: 'motion', how: 'Open hand, flick the wrist down and straight back up once, then hold still' },
-  SHAKE: { name: 'Shake', kind: 'motion', how: 'Shake quickly, like shaking water off, for about a second (any hand shape)', urgent: true },
+  SHAKE: { name: 'Shake', kind: 'motion', how: 'Small, fast jiggle for about a second, like shaking water off (any hand shape)', urgent: true },
 };
 
 // Replies may be plain strings or {text, lcd:[line1, line2]} when the auto LCD wrap would be ugly.
@@ -1027,7 +1027,7 @@ function receive(input) {
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
-  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s${motion.distance >= 0 ? ` · match distance ${Number(motion.distance).toFixed(2)} (limit 0.50)` : ''}` : 'No motion analysed yet.';
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s, ${Math.round(motion.sweep ?? 0)}° each) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s${motion.distance >= 0 ? ` · match distance ${Number(motion.distance).toFixed(2)} (limit 0.50)` : ''}` : 'No motion analysed yet.';
   // Ignore a snapshot taken before the glove applied a just-clicked environment.
   const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
   if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
@@ -1130,6 +1130,8 @@ function init() {
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
   $('morse-test').onclick = () => run('morseTest');
+  // Buzzer type takes effect immediately; a floating or mismatched pin is audible straight away.
+  $('buzzer').onchange = () => { settingsDirty = true; $('settings').requestSubmit(); };
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
   $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
@@ -1204,8 +1206,10 @@ constexpr float MOVE_START = 90, REST_SPEED = 35, STILL_SPEED = 80;
 // A direction change only counts when the speed passes this share of the movement's peak,
 // so the small bounce after a nod or flip is not mistaken for another swing.
 constexpr float SWING_MIN = 50, SWING_SHARE = 0.35f;
-constexpr float FLIP_TILT = 70, FLIP_TURN = 120, SHAKE_ENERGY = 150, SHAKE_RATE = 5;
-constexpr int SHAKE_SWINGS = 5, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
+// Wave and shake are both side-to-side, so they are told apart by sweep size (average degrees
+// turned per swing): a wave makes big sweeps even when fast, a shake is a small, quick jiggle.
+constexpr float FLIP_TILT = 70, FLIP_TURN = 120, SHAKE_SWEEP = 35, SHAKE_RATE = 3;
+constexpr int SHAKE_SWINGS = 4, HOLD_MS = 400, REST_MS = 250, COOLDOWN_MS = 800;
 // A movement ends once the hand has been still this many samples (after a minimum length).
 constexpr int MIN_MOVE_SAMPLES = 12, END_QUIET_SAMPLES = 8;
 // Learned shapes: each recording is 2 s of flex samples; live matching uses the mean of the
@@ -1216,10 +1220,10 @@ constexpr uint32_t SHAPE_MAGIC = 0x53484152;  // changed whenever the shape set 
 static_assert(G_FIST == 0 && G_CALL == SHAPE_N - 1, "Recorded shape slots must match the first gesture indices");
 // Learned motions: up to three recordings each. A movement takes the nearest recording's
 // motion when its weighted feature distance is at most MOTION_LIMIT; anything further is ignored.
-constexpr int MOTION_N = 4, MOTION_EXAMPLES = 3, NF = 10;
+constexpr int MOTION_N = 4, MOTION_EXAMPLES = 3, NF = 11;
 constexpr float MOTION_LIMIT = 0.5f;
-constexpr float FEATURE_WEIGHT[NF] = {1, 1, 1, 1, 1, 1, 1, 0.7f, 0.7f, 1};
-constexpr uint32_t MOTION_MAGIC = 0x4D4F5432;
+constexpr float FEATURE_WEIGHT[NF] = {1, 1, 1, 1, 1, 1, 1, 0.7f, 0.7f, 1, 1};
+constexpr uint32_t MOTION_MAGIC = 0x4D4F5433;  // changed whenever the feature layout changes
 static_assert(G_WAVE == SHAPE_N && G_SHAKE == G_WAVE + MOTION_N - 1, "Recorded motion slots must follow the shapes");
 constexpr int MOTOR_PIN = 26;
 // 3-pin buzzer module signal pin. Replies are spelled in Morse code; Shake beeps SOS.
@@ -1239,7 +1243,7 @@ std::atomic<bool> broadcastPending{false};
 String snapshot;
 
 bool useFlex = true, useMotor = false;
-Buzzer buzzer = Buzzer::Off;
+Buzzer buzzer = Buzzer::ActiveLow;  // the most common 3-pin module; keeps the pin driven, never floating
 bool liveOutput = true, debugOn = false;
 bool mpuOK = false, lcdOK = false, lcdError = false;
 bool flexReady = false, imuReady = false;
@@ -1268,7 +1272,7 @@ float shapeDistance = 0;
 struct MotionModel { uint32_t magic; uint8_t count[MOTION_N], next[MOTION_N]; float ex[MOTION_N][MOTION_EXAMPLES][NF]; };
 MotionModel motions = {MOTION_MAGIC};
 int motionTrainIndex = -1;
-struct MotionInfo { int swings; float rate, turn, tilt, energy, distance; int result; } lastMotion = {0, 0, 0, 0, 0, -1, -1};
+struct MotionInfo { int swings; float rate, sweep, turn, tilt, energy, distance; int result; } lastMotion = {0, 0, 0, 0, 0, 0, -1, -1};
 uint32_t lastSample = 0, lastFlexSample = 0, lastSerial = 0, lastPublish = 0, lastRetry = 0, lastLCD = 0;
 char notice[160] = "Starting";
 char bootId[12];
@@ -1508,7 +1512,8 @@ void stopMorse() {
   if (morse.active) buzzerWrite(false);
   morse.active = morse.sounding = false;
 }
-// Puts the pin in the buzzer type's quiet state. Off leaves it floating so no module type beeps.
+// Puts the pin in the buzzer type's quiet state. Off releases the pin; a module still wired
+// to a floating pin may hiss, so pick its real type instead.
 void applyBuzzerPin() {
   stopMorse();
   // The core's tone task detaches the pin asynchronously; let it finish before reconfiguring.
@@ -1580,7 +1585,7 @@ void resetRecognition() {
 }
 void loadSettings() {
   useFlex = prefs.getBool("useFlex", true); useMotor = prefs.getBool("useMotor", false);
-  uint8_t savedBuzzer = prefs.getUChar("buzzer", 0);
+  uint8_t savedBuzzer = prefs.getUChar("buzzer", uint8_t(Buzzer::ActiveLow));
   buzzer = savedBuzzer <= uint8_t(Buzzer::Passive) ? Buzzer(savedBuzzer) : Buzzer::Off;
   env = prefs.getUChar("env", 0);
   int saved[5];
@@ -1678,10 +1683,14 @@ bool analyzeMotion(MotionInfo& m, float f[NF]) {
   }
   m.swings = swings;
   m.rate = swings * 1000.0f / (moving * SAMPLE_MS);
+  float swept = 0;
+  for (int i = PRE; i < end; ++i) swept += fabsf(moveG[i][axis]) * SAMPLE_MS / 1000.0f;
+  m.sweep = swept / (swings + 1);
   if (total < 1) return false;
   // Which axes moved, how far each turned, swing count and speed, energy and end tilt.
   for (int k = 0; k < 3; ++k) { f[k] = rms[k] / total; f[k+3] = net[k] / 180; }
   f[6] = min(swings, 8) / 6.0f; f[7] = min(m.rate, 12.0f) / 10; f[8] = min(m.energy, 450.0f) / 300; f[9] = m.tilt / 180;
+  f[10] = min(m.sweep, 120.0f) / 90;
   return true;
 }
 bool motionsLearned() {
@@ -1689,10 +1698,10 @@ bool motionsLearned() {
   return true;
 }
 // Built-in rules that do not depend on how the MPU is mounted:
-//   shake = many fast direction changes, flip = ends turned over (gravity moved),
+//   shake = several small, quick sweeps, flip = ends turned over (gravity moved),
 //   wave = back and forth twice or more, nod = out and back exactly once.
 int ruleMotion(const MotionInfo& m) {
-  if (m.swings >= SHAKE_SWINGS && m.rate >= SHAKE_RATE && m.energy >= SHAKE_ENERGY) return G_SHAKE;
+  if (m.swings >= SHAKE_SWINGS && m.sweep <= SHAKE_SWEEP && m.rate >= SHAKE_RATE) return G_SHAKE;
   if (m.swings <= 1 && (m.tilt >= FLIP_TILT || m.turn >= FLIP_TURN)) return G_FLIP;
   if (m.swings >= 2) return G_WAVE;
   if (m.swings == 1) return G_NOD;
@@ -1741,7 +1750,7 @@ void finishCapture() {
   }
   if (moved) m.result = classifyMotion(m, f);
   lastMotion = m;
-  if (debugOn) Serial.printf("MOTION swings=%d rate=%.1f/s turn=%.0f tilt=%.0f energy=%.0f distance=%.2f -> %s\n", m.swings, m.rate, m.turn, m.tilt, m.energy, m.distance, m.result >= 0 ? gestureNames[m.result] : "NONE");
+  if (debugOn) Serial.printf("MOTION swings=%d rate=%.1f/s sweep=%.0f turn=%.0f tilt=%.0f energy=%.0f distance=%.2f -> %s\n", m.swings, m.rate, m.sweep, m.turn, m.tilt, m.energy, m.distance, m.result >= 0 ? gestureNames[m.result] : "NONE");
   if (m.result >= 0) {
     showGesture(m.result, "motion");
     shapeCandidate = heldShape = -1;
@@ -1963,7 +1972,7 @@ void publishState() {
   addNumbers(root,"acc",acc,3,9.80665f); addNumbers(root,"gyro",gyr,3);
   cJSON* motion = cJSON_AddObjectToObject(root,"motion");
   cJSON_AddNumberToObject(motion,"swings",lastMotion.swings); cJSON_AddNumberToObject(motion,"rate",lastMotion.rate); cJSON_AddNumberToObject(motion,"turn",lastMotion.turn);
-  cJSON_AddNumberToObject(motion,"tilt",lastMotion.tilt); cJSON_AddNumberToObject(motion,"energy",lastMotion.energy); cJSON_AddNumberToObject(motion,"distance",lastMotion.distance);
+  cJSON_AddNumberToObject(motion,"tilt",lastMotion.tilt); cJSON_AddNumberToObject(motion,"energy",lastMotion.energy); cJSON_AddNumberToObject(motion,"sweep",lastMotion.sweep); cJSON_AddNumberToObject(motion,"distance",lastMotion.distance);
   cJSON_AddStringToObject(motion,"result",lastMotion.result >= 0 ? gestureNames[lastMotion.result] : "");
   cJSON* events = cJSON_AddArrayToObject(root,"events");
   for(int n=0;n<historyCount;++n) {

@@ -33,7 +33,7 @@ the current `env` id, the five per-finger bend triggers `bendOn`, `fullBend`
 `recording` (shape index being recorded, or -1), `motionMode` (`rules` or
 `learned`), `motionsTrained` (recordings per motion, 0–3), `recordingMotion`
 (motion index being recorded, or -1), hardware settings, the most recent 12 conversation events,
-and `motion` (`swings`, `rate`, `turn`, `tilt`, `energy`, `distance`, `result`;
+and `motion` (`swings`, `rate`, `sweep`, `turn`, `tilt`, `energy`, `distance`, `result`;
 `distance` is -1 unless learned matching ran) for the last
 analysed movement.
 

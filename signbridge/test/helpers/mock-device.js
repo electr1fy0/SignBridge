@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 export function makeMockDevice() {
   const clients = new Set();
   const commands = [];
-  const state = { type:'state', boot:'test-boot', uptime:10000, job:0, remaining:0, notice:'Calibration complete. Show a trained sign.', mpu:true, lcd:true, calibrated:true, imuCalibrated:true, live:true, debug:false, useFlex:true, useMotor:false, pattern:'00000', flex:[2200,2100,1800,2300,2250], delta:[0,0,0,0,0], baseline:[2200,2100,1800,2300,2250], acc:[0,0,9.81], gyro:[0,0,0], env:'everyday', bendOn:[150,100,100,130,110], fullBend:[150,100,100,130,110], shapeMode:'triggers', shape:'', recording:-1, shapesTrained:[0,0,0,0], buzzer:'off', morse:false, motionMode:'rules', recordingMotion:-1, motionsTrained:[0,0,0,0], motion:{swings:0,rate:0,turn:0,tilt:0,energy:0,result:''}, events:[] };
+  const state = { type:'state', boot:'test-boot', uptime:10000, job:0, remaining:0, notice:'Calibration complete. Show a trained sign.', mpu:true, lcd:true, calibrated:true, imuCalibrated:true, live:true, debug:false, useFlex:true, useMotor:false, pattern:'00000', flex:[2200,2100,1800,2300,2250], delta:[0,0,0,0,0], baseline:[2200,2100,1800,2300,2250], acc:[0,0,9.81], gyro:[0,0,0], env:'everyday', bendOn:[150,100,100,130,110], fullBend:[150,100,100,130,110], shapeMode:'triggers', shape:'', recording:-1, shapesTrained:[0,0,0,0], buzzer:'low', morse:false, motionMode:'rules', recordingMotion:-1, motionsTrained:[0,0,0,0], motion:{swings:0,rate:0,sweep:0,turn:0,tilt:0,energy:0,result:''}, events:[] };
   let seq=0;
   function broadcast() {
     state.uptime+=400;

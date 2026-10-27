@@ -206,7 +206,7 @@ function receive(input) {
   const axes = (values) => values.map((v, i) => `${'XYZ'[i]} ${Number(v).toFixed(2)}`).join('   ');
   $('imu-values').textContent = state.mpu ? `Acceleration (m/s²): ${axes(state.acc)}\nGyroscope (°/s): ${axes(state.gyro)}` : 'MPU unavailable. Check SDA 21, SCL 22 and sensor power.';
   const motion = state.motion;
-  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s${motion.distance >= 0 ? ` · match distance ${Number(motion.distance).toFixed(2)} (limit 0.50)` : ''}` : 'No motion analysed yet.';
+  $('motion-values').textContent = motion && (motion.swings || motion.energy) ? `Last motion: ${motion.result ? GESTURES[motion.result]?.name ?? motion.result : 'not recognized'}\nSwings ${motion.swings} (${Number(motion.rate ?? 0).toFixed(1)}/s, ${Math.round(motion.sweep ?? 0)}° each) · turn ${Math.round(motion.turn)}° · tilt change ${Math.round(motion.tilt)}° · energy ${Math.round(motion.energy)}°/s${motion.distance >= 0 ? ` · match distance ${Number(motion.distance).toFixed(2)} (limit 0.50)` : ''}` : 'No motion analysed yet.';
   // Ignore a snapshot taken before the glove applied a just-clicked environment.
   const waiting = requestedEnv && state.env !== requestedEnv.id && Date.now() - requestedEnv.at < 2000;
   if (!waiting) { requestedEnv = null; renderEnvironment(state.env); }
@@ -309,6 +309,8 @@ function init() {
   $('reply-text').oninput = preview;
   $('calibrate').onclick = $('recalibrate').onclick = () => run('calibrate');
   $('morse-test').onclick = () => run('morseTest');
+  // Buzzer type takes effect immediately; a floating or mismatched pin is audible straight away.
+  $('buzzer').onchange = () => { settingsDirty = true; $('settings').requestSubmit(); };
   $('clear-motions').onclick = () => { if (confirm('Clear all recorded motions? Motions will use the built-in rules again.')) run('clearMotions'); };
   $('clear-shapes').onclick = () => { if (confirm('Clear all recorded hand shapes? Hand shapes will use the bend triggers again.')) run('clearShapes'); };
   $('save-bend').onclick = async () => {
